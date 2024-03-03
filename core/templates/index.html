@@ -1,0 +1,50 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrafficTracker</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/css/style.css">
+</head>
+<body>
+    <div class="title-section">
+        <h1 class="main-title">Traffic Tracker</h1>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <h1>剩余流量</h1>
+            <p id="remaining_vs_total"></p>
+        </div>
+
+        <div class="section">
+            <h1>自动重置</h1>
+            <p id="time_to_reset"></p>
+        </div>
+    </div>
+    <div class="container">
+        <div class="input-area">
+            <input type="text" id="start_time" placeholder="起始时间">
+            <input type="text" id="end_time" placeholder="结束时间">
+            <input type="text" id="granularity" placeholder="颗粒度">
+            <button onclick="fetchData()">查询</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="chart-container">
+            <h2>流量</h2>
+            <div id="traffic_vs_time"></div>
+        </div>
+
+        <div class="chart-container">
+            <h2>流量速率</h2>
+            <div id="rate_vs_time"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

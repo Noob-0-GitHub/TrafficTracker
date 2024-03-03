@@ -1,0 +1,12 @@
+### Example user template template
+### Example user template
+
+# IntelliJ project files
+.idea
+workspace.xml
+*.iml
+out
+gen
+
+# sensitive files
+config/vault.json

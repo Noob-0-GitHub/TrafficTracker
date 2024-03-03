@@ -1,0 +1,8 @@
+{
+  "headers": {
+    "User-Agent": "Clash"
+  },
+  "proxies": {
+    "enable": false
+  }
+}
