@@ -9,6 +9,9 @@ from rich import table
 
 os.chdir(os.path.dirname(__file__))
 vault_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'vault.json'))
+data_folder_path = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data'))
+
+precision = 5
 
 console0 = console.Console()
 
@@ -34,6 +37,15 @@ def find_and_sort_substrings(target: str, string_list: (list[str], set[str], tup
     result.sort(key=lambda x: x.lower().find(target))
 
     return result
+
+
+def traffic_to_gb(traffic, _prec=None) -> str:
+    if _prec is None:
+        _prec = precision
+    if _prec >= 0:
+        return f"{traffic / 1024 / 1024 / 1024:.{precision}f} GB"
+    else:
+        return f"{traffic / 1024 / 1024 / 1024} GB"
 
 
 def read_vault(_path: str = None, retry_count=3) -> dict:
@@ -246,6 +258,44 @@ class MainCmd(cmd.Cmd):
             return
         self.vault['groups'].remove(group)
         self.do_list(None)
+
+    def do_data(self, group_name):
+        """show group data using table of rich"""
+        group_name = group_name.lower()
+        groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
+        group = groups.get(group_name)
+        if group is None:
+            if not len(group_name):
+                print('Usage: data [group name]')
+            else:
+                console0.print(f'Group {group_name} not found', no_wrap=True)
+            return
+        try:
+            with open(os.path.join(data_folder_path, f"{group_name}.json"), 'r') as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            console0.print(f"data of group {group_name} not found, check if the group are collected", no_wrap=True)
+            return
+
+        # data_table = table.Table(box=None)
+        data_table = table.Table()
+        data_table.add_column("Date", no_wrap=True)
+        data_table.add_column("Download", no_wrap=True)
+        data_table.add_column("Upload", no_wrap=True)
+        # total traffic
+        data_table.add_column("Total", no_wrap=True)
+        # percentage (total traffic/total)
+        data_table.add_column("Percentage", no_wrap=True)
+        for point in data:
+            data_table.add_row(
+                point.get('date'),
+                traffic_to_gb(point.get('download')),
+                traffic_to_gb(point.get('upload')),
+                traffic_to_gb(point.get('download') + point.get('upload')),
+                f"{(point.get('download') + point.get('upload')) / point.get('total') * 100 :.{precision}f} %"
+                if precision >= 0 else f"{(point.get('download') + point.get('upload')) / point.get('total') * 100} %",
+            )
+        console0.print(data_table)
 
 
 class EditGroupCmd(cmd.Cmd):
