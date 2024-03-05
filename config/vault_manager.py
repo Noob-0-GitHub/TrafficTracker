@@ -162,6 +162,7 @@ class MainCmd(cmd.Cmd):
         set config of a group
         usage: config [group name]
         """
+        group_name = group_name.lower()
         groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
         group = groups.get(group_name)
         if group is None:
@@ -234,6 +235,7 @@ class MainCmd(cmd.Cmd):
 
     def do_del(self, group_name):
         """delete group"""
+        group_name = group_name.lower()
         groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
         group = groups.get(group_name)
         if group is None:

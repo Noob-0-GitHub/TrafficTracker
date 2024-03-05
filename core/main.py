@@ -57,7 +57,7 @@ def save_data(file_name, data):
     save_json(file_path, data)
 
 
-@schedule(5 * 60)
+@schedule(20 * 60)
 def main():
     # log(f"\r{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: collecting...")
     collect_and_save()
