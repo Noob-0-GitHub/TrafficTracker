@@ -16,6 +16,13 @@ precision = 5
 console0 = console.Console()
 
 
+# def console_input(prompt: str, _console=console0, markup=True, emoji=True, password=False, stream=None):
+def console_input(prompt: str):
+    # _r = _console.input(prompt, markup=markup, emoji=emoji, password=password, stream=stream)
+    _r = input(prompt)
+    return _r
+
+
 def find_and_sort_substrings(target: str, string_list: (list[str], set[str], tuple[str]), ignore_case=True):
     """
     find the target in string iterable, and sort the result by the position of the target in the string
@@ -92,7 +99,7 @@ class MainCmd(cmd.Cmd):
     def do_exit(self, _):
         """exit the vault manager"""
         if not self.check_if_vault_save():
-            _r = console0.input("not saved, sure to exit? (Y/n/save)")
+            _r = console_input("not saved, sure to exit? (Y/n/save)")
             if _r.lower() == "y":
                 return True
             elif _r.lower() == "n":
@@ -108,7 +115,7 @@ class MainCmd(cmd.Cmd):
     def do_save(self, _):
         """save changes"""
         console0.print(json.dumps(self.vault, indent=2))
-        _r = console0.input("save? (Y/n)")
+        _r = console_input("save? (Y/n)")
         if _r.lower() == "n":
             return
         print("saving...", end="")
@@ -191,7 +198,7 @@ class MainCmd(cmd.Cmd):
 
     def do_new(self, _):
         """add a new group"""
-        group_name = console0.input("Name = ")
+        group_name = console_input("Name = ")
         if not len(group_name):
             console0.print("Name cannot be empty", no_wrap=True)
             return
@@ -204,7 +211,7 @@ class MainCmd(cmd.Cmd):
         i = 1
         while True:
             subscribe_name = f"subscribe{i}"
-            url = console0.input(f"{subscribe_name}: url = ")
+            url = console_input(f"{subscribe_name}: url = ")
             if not len(url):
                 break
             url_data = {'url': url, 'name': subscribe_name, 'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -216,7 +223,7 @@ class MainCmd(cmd.Cmd):
         # attrs
         save_headers = True
         console0.print("save-headers = ", save_headers)
-        _r = console0.input("save-headers? " + "(Y/n)" if save_headers else "(y/N)")
+        _r = console_input("save-headers? " + "(Y/n)" if save_headers else "(y/N)")
         if _r.lower() == "y":
             save_headers = True
         elif _r.lower() == "n":
@@ -225,7 +232,7 @@ class MainCmd(cmd.Cmd):
 
         save_body = False
         console0.print("save-body = ", save_body)
-        _r = console0.input("save-body? " + "(Y/n)" if save_headers else "(y/N)")
+        _r = console_input("save-body? " + "(Y/n)" if save_headers else "(y/N)")
         if _r.lower() == "y":
             save_body = True
         elif _r.lower() == "n":
@@ -240,7 +247,7 @@ class MainCmd(cmd.Cmd):
         }
         console0.print(json.dumps(new_group, indent=self.intend), no_wrap=True)
 
-        _r = console0.input("save? (Y/n)")
+        _r = console_input("save? (Y/n)")
         if _r.lower() != "n":
             self.vault['groups'].append(new_group)
             self.do_list(None)
@@ -274,7 +281,7 @@ class MainCmd(cmd.Cmd):
             with open(os.path.join(data_folder_path, f"{group_name}.json"), 'r') as f:
                 data = json.load(f)
         except FileNotFoundError:
-            console0.print(f"data of group {group_name} not found, check if the group are collected", no_wrap=True)
+            console0.print(f"Data of group {group_name} not found, check if the group are collected", no_wrap=True)
             return
 
         # data_table = table.Table(box=None)
@@ -326,7 +333,7 @@ class EditGroupCmd(cmd.Cmd):
             self.group['name'] = new_name
         else:
             console0.print(f"name = {self.group['name']}", no_wrap=True)
-            _r = console0.input("name = ")
+            _r = console_input("name = ")
             if len(_r):
                 self.group['name'] = _r
         console0.print(f"name = {self.group['name']}", no_wrap=True)
@@ -337,7 +344,7 @@ class EditGroupCmd(cmd.Cmd):
             if key in ['name', 'urls-with-token']:
                 continue
             print(f"{key} = {value}")
-            _r = console0.input(f"{key} = ")
+            _r = console_input(f"{key} = ")
             if len(_r):
                 if _r.lower() == "false":
                     _r = False
@@ -364,7 +371,7 @@ class EditGroupCmd(cmd.Cmd):
         i = 1
         while True:
             name = f"subscribe{i}"
-            url = console0.input(f"{name}: url = ")
+            url = console_input(f"{name}: url = ")
             if not len(url):
                 return
             url_data = {'url': url, 'name': name, 'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -390,7 +397,7 @@ class EditGroupCmd(cmd.Cmd):
                         r"(((ht|f)tps?)://)?"
                         r"([^!@#$%^&*?.\s-]([^!@#$%^&*?.\s]{0,63}[^!@#$%^&*?.\s])?\.)+[a-z]{2,6}/?/",
                         args.split(" ")[1]):
-                    _r = console0.input("invalid url, sure to add? (n/y)")
+                    _r = console_input("invalid url, sure to add? (n/y)")
                     if _r.lower() != "y":
                         return
                 self.add_url(args.split(" ")[1])
