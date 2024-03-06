@@ -266,6 +266,64 @@ class MainCmd(cmd.Cmd):
         self.vault['groups'].remove(group)
         self.do_list(None)
 
+    def do_merge(self, group_name):
+        """merge multiple datafiles of one group"""
+        if not len(group_name):
+            group_name = console_input("Name = ")
+        group_name = group_name.lower()
+        groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
+        group = groups.get(group_name)
+        if group is None:
+            if not len(group_name):
+                print('Usage: merge | merge [group name]')
+            else:
+                console0.print(f'Group {group_name} not found', no_wrap=True)
+            return
+
+        datafiles = list()
+        while True:
+            datafile = console_input("datafile path = ")
+            if not len(datafile):
+                if datafiles:
+                    break
+                else:
+                    console0.print("No datafiles input", no_wrap=True)
+                    return
+            if not os.path.exists(datafile):
+                console0.print(f"File \"{datafile}\" not found", no_wrap=True)
+                continue
+            if datafile in datafiles:
+                console0.print(f"Duplicate datafile \"{datafile}\"", no_wrap=True)
+                continue
+            datafiles.append(datafile)
+        console0.print("datafiles:", no_wrap=True)
+        console0.print(datafiles, no_wrap=True)
+        _r = console_input("merge? (Y/n)")
+        if _r.lower() != "n":
+            return
+
+        # merge
+        datafiles.insert(0, os.path.join(data_folder_path, group_name + ".json"))
+        points = list()
+        recorded_date = set()
+        for datafile in datafiles:
+            with open(datafile, 'r') as f:
+                data = json.load(f)
+            for point in data:
+                try:
+                    point_date: float = datetime.strptime(groups.get(point['date']), "%Y-%m-%d %H:%M:%S").timestamp()
+                except Exception as e:
+                    console0.print(f"Error parsing date {point['date']}: {e}", no_wrap=True)
+                    continue
+                if point_date in recorded_date:
+                    continue
+                recorded_date.add(point_date)
+                points.append(point)
+        points.sort(key=lambda x: datetime.strptime(x['date'], "%Y-%m-%d %H:%M:%S").timestamp())
+
+        with open(os.path.join(data_folder_path, group_name + ".json"), 'w') as f:
+            json.dump(points, f)
+
     def do_data(self, group_name):
         """show group data using table of rich"""
         group_name = group_name.lower()
