@@ -222,22 +222,22 @@ class MainCmd(cmd.Cmd):
 
         # attrs
         save_headers = True
-        console0.print("save-headers = ", save_headers)
+        console0.print("save-headers =", save_headers)
         _r = console_input("save-headers? " + "(Y/n)" if save_headers else "(y/N)")
         if _r.lower() == "y":
             save_headers = True
         elif _r.lower() == "n":
             save_headers = False
-        console0.print("save-headers = ", save_headers)
+        console0.print("save-headers =", save_headers)
 
         save_body = False
-        console0.print("save-body = ", save_body)
+        console0.print("save-body =", save_body)
         _r = console_input("save-body? " + "(Y/n)" if save_headers else "(y/N)")
         if _r.lower() == "y":
             save_body = True
         elif _r.lower() == "n":
             save_body = False
-        console0.print("save-body = ", save_body)
+        console0.print("save-body =", save_body)
 
         new_group = {
             'name': group_name,
