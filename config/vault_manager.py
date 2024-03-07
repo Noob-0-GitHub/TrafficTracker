@@ -2,7 +2,7 @@ import cmd
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from rich import console
 from rich import table
@@ -12,6 +12,8 @@ vault_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'vault.json
 data_folder_path = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data'))
 
 precision = 5
+
+gmt_tz = 0
 
 console0 = console.Console()
 
@@ -121,6 +123,45 @@ class MainCmd(cmd.Cmd):
         print("saving...", end="")
         update_vault(self.vault)
         print("\rsaved successfully")
+
+    @staticmethod
+    def do_prec(_prec):
+        """set the precision"""
+        global precision
+        if not len(_prec):
+            console0.print(f"precision = {precision}")
+            print("Usage: prec [precision]")
+            return
+        try:
+            _prec = int(_prec)
+        except ValueError:
+            console0.print(f"precision = {precision}")
+            print("precision must be an integer")
+            return
+        precision = _prec
+        console0.print(f"precision = {precision}")
+
+    @staticmethod
+    def do_gmt(_gmt_tz):
+        """set the GMT timezone"""
+        global gmt_tz
+        if _gmt_tz:
+            if _gmt_tz.lower() in ["china", "ch", "cn", "zh"]:
+                gmt_tz = 8
+            else:
+                try:
+                    _gmt_tz = int(_gmt_tz)
+                except ValueError:
+                    console0.print("GMT timezone must be an integer")
+                    return
+                if _gmt_tz < -12 or _gmt_tz > 12:
+                    console0.print("GMT timezone must be between -12 and 12")
+                    return
+                gmt_tz = _gmt_tz
+            console0.print(f"GMT timezone = {gmt_tz}")
+        else:
+            console0.print(f"GMT timezone = {gmt_tz}")
+            print("Usage: gmt [GMT timezone]")
 
     def do_list(self, _):
         """list all groups"""
@@ -349,17 +390,42 @@ class MainCmd(cmd.Cmd):
         data_table.add_column("Upload", no_wrap=True)
         # total traffic
         data_table.add_column("Total", no_wrap=True)
+        data_table.add_column("Additional", no_wrap=True)
+        # speed (total traffic in GB/total hours)
+        data_table.add_column("Speed GB/h", no_wrap=True)
+        # speed (total traffic in MB/total seconds)
+        data_table.add_column("Speed MB/s", no_wrap=True)
         # percentage (total traffic/total)
         data_table.add_column("Percentage", no_wrap=True)
+
+        last_traffic = None
+        last_date_ts = None
         for point in data:
+            total_traffic = point.get('download') + point.get('upload')
+            additional_traffic = (total_traffic - last_traffic) if last_traffic is not None else None
+            date_ts = datetime.strptime(point.get('date'), "%Y-%m-%d %H:%M:%S").timestamp()
+            additional_time_ts = (date_ts - last_date_ts) if last_date_ts is not None else None
             data_table.add_row(
-                point.get('date'),
+                datetime.fromtimestamp(date_ts).strftime(f"%Y-%m-%d %H:%M:%S") if gmt_tz == 0 else
+                (datetime.fromtimestamp(date_ts) + timedelta(hours=gmt_tz))
+                .strftime(f"%Y-%m-%d %H:%M:%S GMT+{gmt_tz:0>2d}00") if gmt_tz > 0 else
+                (datetime.fromtimestamp(date_ts) - timedelta(hours=-gmt_tz))
+                .strftime(f"%Y-%m-%d %H:%M:%S GMT-{gmt_tz:0>2d}00"),
                 traffic_to_gb(point.get('download')),
                 traffic_to_gb(point.get('upload')),
-                traffic_to_gb(point.get('download') + point.get('upload')),
-                f"{(point.get('download') + point.get('upload')) / point.get('total') * 100 :.{precision}f} %"
-                if precision >= 0 else f"{(point.get('download') + point.get('upload')) / point.get('total') * 100} %",
+                traffic_to_gb(total_traffic),
+                traffic_to_gb(additional_traffic) if additional_traffic is not None else "N/A",
+                (f"{additional_traffic / additional_time_ts * 3600 / 1024 / 1024 / 1024 :.{precision}f} GB/h"
+                 if precision >= 0 else f"{additional_traffic / additional_time_ts * 3600 / 1024 / 1024 / 1024} GB/h")
+                if additional_traffic is not None else "N/A",
+                (f"{additional_traffic / additional_time_ts / 1024 / 1024 :.{precision}f} MB/s"
+                 if precision >= 0 else f"{additional_traffic / additional_time_ts / 1024 / 1024} MB/s")
+                if additional_traffic is not None else "N/A",
+                f"{total_traffic / point.get('total') :.{precision}%}"
+                if precision >= 0 else f"{total_traffic / point.get('total') * 100}%",
             )
+            last_traffic = total_traffic
+            last_date_ts = date_ts
         console0.print(data_table)
 
 
