@@ -2,20 +2,63 @@ import cmd
 import json
 import os
 import re
-from datetime import datetime, timedelta
+import warnings
+from datetime import datetime
+from datetime import timedelta
 
 from rich import console
 from rich import table
 
 os.chdir(os.path.dirname(__file__))
 vault_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'vault.json'))
-data_folder_path = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data'))
+
+data_folder_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
 
 precision = 5
-
 gmt_tz = 0
 
 console0 = console.Console()
+
+
+def parse_json(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            json_data = json.load(file)
+            return json_data
+    except FileNotFoundError:
+        warnings.warn(f"file '{file_path}' not found, empty dictionary instead.")
+        return {}
+    except json.JSONDecodeError as e:
+        warnings.warn(f"Error parsing JSON file: {e}\nempty dictionary instead")
+        return {}
+
+
+def save_json(file_path, data, indent=None):
+    try:
+        with open(file_path, 'w') as file:
+            json.dump(data, file, default=handle_non_serializable, indent=indent)
+    except Exception as e:
+        warnings.warn(f"Error saving JSON file: {e}")
+
+
+def handle_non_serializable(obj):
+    """handle non serializable object"""
+    if isinstance(obj, (set,)):
+        return list(obj)
+    else:
+        warnings.warn(f"non serializable object: {obj}", RuntimeWarning)
+        return "__non_serializable__"
+
+
+def parse_data(file_name):
+    file_path = os.path.join(data_folder_path, file_name)
+    parsed = parse_json(file_path)
+    return parsed if len(parsed) else []
+
+
+def save_data(file_name, data):
+    file_path = os.path.join(data_folder_path, file_name)
+    save_json(file_path, data)
 
 
 # def console_input(prompt: str, _console=console0, markup=True, emoji=True, password=False, stream=None):
@@ -55,6 +98,15 @@ def traffic_to_gb(traffic, _prec=None) -> str:
         return f"{traffic / 1024 / 1024 / 1024:.{precision}f} GB"
     else:
         return f"{traffic / 1024 / 1024 / 1024} GB"
+
+
+def traffic_to_mb(traffic, _prec=None) -> str:
+    if _prec is None:
+        _prec = precision
+    if _prec >= 0:
+        return f"{traffic / 1024 / 1024:.{precision}f} MB"
+    else:
+        return f"{traffic / 1024 / 1024} MB"
 
 
 def read_vault(_path: str = None, retry_count=3) -> dict:
@@ -348,8 +400,7 @@ class MainCmd(cmd.Cmd):
         points = list()
         recorded_date = set()
         for datafile in datafiles:
-            with open(datafile, 'r') as f:
-                data = json.load(f)
+            data = parse_json(datafile)
             for point in data:
                 try:
                     point_date: float = datetime.strptime(groups.get(point['date']), "%Y-%m-%d %H:%M:%S").timestamp()
@@ -362,8 +413,7 @@ class MainCmd(cmd.Cmd):
                 points.append(point)
         points.sort(key=lambda x: datetime.strptime(x['date'], "%Y-%m-%d %H:%M:%S").timestamp())
 
-        with open(os.path.join(data_folder_path, group_name + ".json"), 'w') as f:
-            json.dump(points, f)
+        save_data(group_name + ".json", points)
 
     def do_data(self, group_name):
         """show group data using table of rich"""
@@ -398,6 +448,11 @@ class MainCmd(cmd.Cmd):
         # percentage (total traffic/total)
         data_table.add_column("Percentage", no_wrap=True)
 
+        average_total = sum(point.get('upload') + point.get('download') for point in data) / len(data)
+        average_additional = ((data[0].get('upload') - data[-1].get('upload')
+                              + data[0].get('download') - data[-1].get('download')) / len(data)) if len(data) > 1 else 0
+        print(average_total, 1024 ** 3)
+
         last_traffic = None
         last_date_ts = None
         for point in data:
@@ -411,10 +466,12 @@ class MainCmd(cmd.Cmd):
                 .strftime(f"%Y-%m-%d %H:%M:%S GMT+{gmt_tz:0>2d}00") if gmt_tz > 0 else
                 (datetime.fromtimestamp(date_ts) - timedelta(hours=-gmt_tz))
                 .strftime(f"%Y-%m-%d %H:%M:%S GMT-{gmt_tz:0>2d}00"),
-                traffic_to_gb(point.get('download')),
-                traffic_to_gb(point.get('upload')),
-                traffic_to_gb(total_traffic),
-                traffic_to_gb(additional_traffic) if additional_traffic is not None else "N/A",
+                traffic_to_gb(point.get('download')) if average_total > 1024 ** 3
+                else traffic_to_mb(point.get('download')),
+                traffic_to_gb(point.get('upload')) if average_total > 1024 ** 3 else traffic_to_mb(point.get('upload')),
+                traffic_to_gb(total_traffic) if average_total > 1024 ** 3 else traffic_to_mb(total_traffic),
+                (traffic_to_gb(additional_traffic) if average_additional > 1024 ** 3
+                 else traffic_to_mb(additional_traffic)) if additional_traffic is not None else "N/A",
                 (f"{additional_traffic / additional_time_ts * 3600 / 1024 / 1024 / 1024 :.{precision}f} GB/h"
                  if precision >= 0 else f"{additional_traffic / additional_time_ts * 3600 / 1024 / 1024 / 1024} GB/h")
                 if additional_traffic is not None else "N/A",
