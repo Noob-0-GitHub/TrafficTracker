@@ -3,24 +3,34 @@ import json
 import os
 import re
 import warnings
+from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
 
-from rich import console
-from rich import table
+from rich import console, table, markdown
+from rich import traceback as rich_traceback
 
 os.chdir(os.path.dirname(__file__))
 vault_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'vault.json'))
-
 data_folder_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
 
 precision = 5
 gmt_tz = 0
 
-console0 = console.Console()
+console0 = console.Console(record=True, style=f"on #{'282c34'}")  # atom one dark theme
+rich_traceback.install(console=console0, extra_lines=8, show_locals=True, theme="one-dark")
 
 
 def parse_json(file_path):
+    """
+    Parses a JSON file and returns the parsed data, with some error handling.
+
+    Args:
+        file_path (str): The path to the JSON file.
+
+    Returns:
+        dict: The parsed JSON data, or an empty dictionary if the file is not found or cannot be parsed.
+    """
     try:
         with open(file_path, 'r') as file:
             json_data = json.load(file)
@@ -34,6 +44,9 @@ def parse_json(file_path):
 
 
 def save_json(file_path, data, indent=None):
+    """
+    Save JSON data to a file, with some error handling.
+    """
     try:
         with open(file_path, 'w') as file:
             json.dump(data, file, default=handle_non_serializable, indent=indent)
@@ -51,18 +64,33 @@ def handle_non_serializable(obj):
 
 
 def parse_data(file_name):
+    """
+    Parse data by group name.
+
+    Args:
+        file_name (str): The name of the file to parse.
+
+    Returns:
+        list: The parsed data, or an empty list if no data was parsed.
+    """
     file_path = os.path.join(data_folder_path, file_name)
     parsed = parse_json(file_path)
     return parsed if len(parsed) else []
 
 
 def save_data(file_name, data):
+    """
+    Save data to the default data folder.
+    """
     file_path = os.path.join(data_folder_path, file_name)
     save_json(file_path, data)
 
 
 # def console_input(prompt: str, _console=console0, markup=True, emoji=True, password=False, stream=None):
 def console_input(prompt: str):
+    """
+    A function that takes a prompt as input and returns the input provided by the user.
+    """
     # _r = _console.input(prompt, markup=markup, emoji=emoji, password=password, stream=stream)
     _r = input(prompt)
     return _r
@@ -92,6 +120,16 @@ def find_and_sort_substrings(target: str, string_list: (list[str], set[str], tup
 
 
 def traffic_to_gb(traffic, _prec=None) -> str:
+    """
+    Convert traffic from bytes to gigabytes and return the result as a string.
+
+    Parameters:
+    - traffic: the amount of traffic in bytes (int)
+    - _prec: precision for formatting the result (int, optional)
+
+    Returns:
+    - str: the traffic converted to gigabytes with the specified precision
+    """
     if _prec is None:
         _prec = precision
     if _prec >= 0:
@@ -101,6 +139,16 @@ def traffic_to_gb(traffic, _prec=None) -> str:
 
 
 def traffic_to_mb(traffic, _prec=None) -> str:
+    """
+    Converts the given traffic value in bytes to megabytes.
+
+    Args:
+        traffic: The traffic value to be converted.
+        _prec: The precision of the conversion, defaulting to the global variable.
+
+    Returns:
+        str: The converted traffic value in megabytes as a string.
+    """
     if _prec is None:
         _prec = precision
     if _prec >= 0:
@@ -110,6 +158,11 @@ def traffic_to_mb(traffic, _prec=None) -> str:
 
 
 def read_vault(_path: str = None, retry_count=3) -> dict:
+    """
+    Reads the vault data from the specified path or the default vault path if none is provided. 
+    Attempts to read the data from the specified path multiple times in case of failure up to the retry count.
+    Returns the vault data as a dictionary.
+    """
     if _path is None:
         _path = vault_path
     for i in range(retry_count):
@@ -126,13 +179,103 @@ def read_vault(_path: str = None, retry_count=3) -> dict:
 
 
 def update_vault(vault_data, _path: str = None):
+    """
+    Update the vault with the given data.
+    """
     if _path is None:
         _path = vault_path
     with open(_path, 'w') as f:
         json.dump(vault_data, f, indent=2)
 
 
-class MainCmd(cmd.Cmd):
+def track_group(group_name) -> OrderedDict[str, str]:
+    """return a dict of information by the group name"""
+    with open(os.path.join(data_folder_path, f"{group_name}.json"), 'r') as f:
+        _raw_data: list[dict] = json.load(f)
+    assert isinstance(_raw_data, list)
+
+    # collect data by time
+    start_of_month = datetime.strptime(_raw_data[-1].get('date'), "%Y-%m-%d %H:%M:%S").replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0)
+    data = [point for point in _raw_data if
+            start_of_month <= datetime.strptime(point.get('date'), "%Y-%m-%d %H:%M:%S")]
+    if len(data) <= 0:
+        raise ValueError(f"No sufficient data of group {group_name} in the time interval")
+
+    # disposal data
+    latest_point = data[-1]
+    latest_date = datetime.strptime(latest_point.get('date'), "%Y-%m-%d %H:%M:%S")
+
+    traffic_limit = latest_point.get('total')
+    expire_in_ts = latest_point.get('expire')
+    expire = datetime.fromtimestamp(expire_in_ts)
+
+    total_upload = latest_point.get('upload')
+    total_download = latest_point.get('download')
+    total_traffic = total_upload + total_download
+    available_traffic = traffic_limit - total_traffic
+    used_percent = total_traffic / traffic_limit
+    available_percent = available_traffic / traffic_limit
+
+    # month additional traffic is equal to the total traffic
+    month_speed_of_day = total_traffic / latest_date.day
+    month_traffic_predicted = month_speed_of_day * (
+            start_of_month.replace(month=start_of_month.month + 1) - start_of_month).days
+
+    start_of_week = (latest_date - timedelta(days=7)) if latest_date.day > 7 else start_of_month
+    week_earliest_point = [point for point in data
+                           if datetime.strptime(point.get('date'), "%Y-%m-%d %H:%M:%S") >= start_of_week][0]
+    week_additional_upload_traffic = latest_point.get('upload') - week_earliest_point.get('upload')
+    week_additional_download_traffic = latest_point.get('download') - week_earliest_point.get('download')
+    week_additional_traffic = week_additional_upload_traffic + week_additional_download_traffic
+    week_speed_of_day = week_additional_traffic / (latest_date - start_of_week).days
+    week_traffic_predicted = (week_speed_of_day * 7 +
+                              week_earliest_point.get('upload') + week_earliest_point.get('download'))
+
+    week_traffic_predicted_by_month = total_traffic + month_speed_of_day * (latest_date - start_of_month).days
+    month_traffic_predicted_by_week = total_traffic + week_speed_of_day * (start_of_month.replace(
+        month=start_of_month.month + 1) - latest_date).days
+
+    # abandon to statistics by day because of prediction inaccuracy
+    # start_of_day = latest_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    # day_earliest_point = [point for point in data
+    #                       if datetime.strptime(point.get('date'), "%Y-%m-%d %H:%M:%S") >= start_of_day][0]
+    # day_additional_upload_traffic = latest_point.get('upload') - day_earliest_point.get('upload')
+    # day_additional_download_traffic = latest_point.get('download') - day_earliest_point.get('download')
+    # day_additional_traffic = day_additional_upload_traffic + day_additional_download_traffic
+    # day_speed = day_additional_traffic / (latest_date - start_of_day).days
+
+    track_data: OrderedDict[str, str] = OrderedDict()
+    track_data['Group'] = group_name
+    track_data['Expiration time'] = expire.strftime("%Y-%m-%d %H:%M:%S")
+    track_data['Traffic limitation'] = traffic_to_gb(traffic_limit)
+    track_data['Upload traffic used'] = traffic_to_gb(total_upload)
+    track_data['Download traffic used'] = traffic_to_gb(total_download)
+    track_data['Total traffic used'] = traffic_to_gb(total_traffic)
+    track_data['Upload in latest week'] = traffic_to_gb(week_additional_upload_traffic)
+    track_data['Download in latest week'] = traffic_to_gb(week_additional_download_traffic)
+    track_data['Total in latest week'] = traffic_to_gb(week_additional_traffic)
+    track_data['Current available traffic'] = traffic_to_gb(available_traffic)
+    track_data['Used percentage'] = f"{used_percent * 100:.{precision}f}%" \
+        if precision >= 0 else f"{used_percent * 100}%"
+    track_data['Available percentage'] = f"{available_percent * 100:.{precision}f}%" \
+        if precision >= 0 else f"{available_percent * 100}%"
+    track_data['Average speed of day in month'] = f"{traffic_to_gb(month_speed_of_day).rstrip()}/day"
+    track_data['Average speed of day in week'] = f"{traffic_to_gb(week_speed_of_day).rstrip()}/day"
+    track_data['Traffic will be used by the end of the month predicted by the current month data'] = \
+        traffic_to_gb(month_traffic_predicted)
+    track_data['Traffic will be used by the end of the month predicted by the current week data'] = \
+        traffic_to_gb(month_traffic_predicted_by_week)
+    track_data['Traffic will be used by the end of the week predicted by the current month data'] = \
+        traffic_to_gb(week_traffic_predicted_by_month)
+    track_data['Traffic will be used by the end of the week predicted by the current week data'] = \
+        traffic_to_gb(week_traffic_predicted)
+    # todo: plot
+
+    return track_data
+
+
+class MainShell(cmd.Cmd):
     prompt = '(vault mgr) >> '
     intend = " " * 2
 
@@ -153,7 +296,7 @@ class MainCmd(cmd.Cmd):
     def do_exit(self, _):
         """exit the vault manager"""
         if not self.check_if_vault_save():
-            _r = console_input("not saved, sure to exit? (Y/n/save)")
+            _r = console_input("Not saved, sure to exit? (Y/n/save)")
             if _r.lower() == "y":
                 return True
             elif _r.lower() == "n":
@@ -283,7 +426,7 @@ class MainCmd(cmd.Cmd):
             else:
                 console0.print(f'Group {group_name} not found', no_wrap=True)
             return
-        EditGroupCmd(group_name, group).cmdloop()
+        EditGroupShell(group_name, group).cmdloop()
 
     def do_cfg(self, arg):
         """shortcut for config"""
@@ -413,6 +556,7 @@ class MainCmd(cmd.Cmd):
                 points.append(point)
         points.sort(key=lambda x: datetime.strptime(x['date'], "%Y-%m-%d %H:%M:%S").timestamp())
 
+        # noinspection PyTypeChecker
         save_data(group_name + ".json", points)
 
     def do_data(self, group_name):
@@ -434,24 +578,24 @@ class MainCmd(cmd.Cmd):
             return
 
         # data_table = table.Table(box=None)
-        data_table = table.Table()
-        data_table.add_column("Date", no_wrap=True)
-        data_table.add_column("Download", no_wrap=True)
-        data_table.add_column("Upload", no_wrap=True)
+        data_table = table.Table(caption_justify="right", show_footer=True, width=console0.width)
+        data_table.add_column("Date", "Date", style="magenta", no_wrap=True)
+        data_table.add_column("Download", "Download", justify="right", style="cyan", no_wrap=True)
+        data_table.add_column("Upload", "Upload", justify="right", style="green", no_wrap=True)
         # total traffic
-        data_table.add_column("Total", no_wrap=True)
-        data_table.add_column("Additional", no_wrap=True)
+        data_table.add_column("Total", "Total", justify="right", style="blue", no_wrap=True)
+        data_table.add_column("Additional", "Additional", justify="right", style="yellow", no_wrap=True)
         # speed (total traffic in GB/total hours)
-        data_table.add_column("Speed GB/h", no_wrap=True)
+        data_table.add_column("Speed GB/h", "Speed GB/h", justify="right", style="cyan", no_wrap=True)
         # speed (total traffic in MB/total seconds)
-        data_table.add_column("Speed MB/s", no_wrap=True)
+        data_table.add_column("Speed MB/s", "Speed MB/s", justify="right", style="green", no_wrap=True)
         # percentage (total traffic/total)
-        data_table.add_column("Percentage", no_wrap=True)
+        data_table.add_column("Percentage", "Percentage", justify="right", style="red", no_wrap=True)
 
         average_total = sum(point.get('upload') + point.get('download') for point in data) / len(data)
         average_additional = ((data[0].get('upload') - data[-1].get('upload')
-                              + data[0].get('download') - data[-1].get('download')) / len(data)) if len(data) > 1 else 0
-        print(average_total, 1024 ** 3)
+                               + data[0].get('download') - data[-1].get('download')) / len(data)) if len(
+            data) > 1 else 0
 
         last_traffic = None
         last_date_ts = None
@@ -472,11 +616,11 @@ class MainCmd(cmd.Cmd):
                 traffic_to_gb(total_traffic) if average_total > 1024 ** 3 else traffic_to_mb(total_traffic),
                 (traffic_to_gb(additional_traffic) if average_additional > 1024 ** 3
                  else traffic_to_mb(additional_traffic)) if additional_traffic is not None else "N/A",
-                (f"{additional_traffic / additional_time_ts * 3600 / 1024 / 1024 / 1024 :.{precision}f} GB/h"
-                 if precision >= 0 else f"{additional_traffic / additional_time_ts * 3600 / 1024 / 1024 / 1024} GB/h")
+                (f"{additional_traffic / additional_time_ts * 3600 / (1024 ** 3) :.{precision}f} GB/h"
+                 if precision >= 0 else f"{additional_traffic / additional_time_ts * 3600 / (1024 ** 3)} GB/h")
                 if additional_traffic is not None else "N/A",
-                (f"{additional_traffic / additional_time_ts / 1024 / 1024 :.{precision}f} MB/s"
-                 if precision >= 0 else f"{additional_traffic / additional_time_ts / 1024 / 1024} MB/s")
+                (f"{additional_traffic / additional_time_ts / (1024 ** 2) :.{precision}f} MB/s"
+                 if precision >= 0 else f"{additional_traffic / additional_time_ts / (1024 ** 2)} MB/s")
                 if additional_traffic is not None else "N/A",
                 f"{total_traffic / point.get('total') :.{precision}%}"
                 if precision >= 0 else f"{total_traffic / point.get('total') * 100}%",
@@ -485,9 +629,125 @@ class MainCmd(cmd.Cmd):
             last_date_ts = date_ts
         console0.print(data_table)
 
+    def do_addl(self, group_name):
+        """show additional traffic by group name and date"""
+        group_name = group_name.lower()
+        groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
+        group = groups.get(group_name)
+        if group is None:
+            if not len(group_name):
+                print('Usage: addl [group name]')
+            else:
+                console0.print(f'Group {group_name} not found', no_wrap=True)
+            return
+        try:
+            with open(os.path.join(data_folder_path, f"{group_name}.json"), 'r') as f:
+                _raw_data = json.load(f)
+        except FileNotFoundError:
+            console0.print(f"Data of group {group_name} not found, check if the group are collected", no_wrap=True)
+            return
+        if len(_raw_data) <= 0:
+            console0.print(f"No sufficient data of group {group_name} for statistics, check if the group are collected",
+                           no_wrap=True)
+            return
 
-class EditGroupCmd(cmd.Cmd):
-    intend = MainCmd.intend
+        start_date = console_input("Start time (YYYY-MM-DD HH:MM:SS): ")
+        if len(start_date):
+            start_date = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
+        else:
+            start_date = datetime.strptime(_raw_data[-1].get('date'), "%Y-%m-%d %H:%M:%S").replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        end_date = console_input("End time (YYYY-MM-DD HH:MM:SS): ")
+        if len(end_date):
+            end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
+        else:
+            end_date = datetime.strptime(_raw_data[-1].get('date'), "%Y-%m-%d %H:%M:%S") + timedelta(microseconds=1)
+
+        data = [point for point in _raw_data if
+                start_date <= datetime.strptime(point.get('date'), "%Y-%m-%d %H:%M:%S") <= end_date]
+        if len(data) <= 0:
+            console0.print(f"No sufficient data of group {group_name} for statistics, check if the group are collected",
+                           no_wrap=True)
+            return
+
+        additional_upload = data[-1].get('upload') - data[0].get('upload')
+        additional_download = data[-1].get('download') - data[0].get('download')
+        additional_total = additional_upload + additional_download
+        additional_days = (datetime.strptime(data[-1].get('date'), "%Y-%m-%d %H:%M:%S")
+                           - datetime.strptime(data[0].get('date'), "%Y-%m-%d %H:%M:%S")).days
+        speed_upload = additional_upload / additional_days
+        speed_download = additional_download / additional_days
+        speed_total = additional_total / additional_days
+
+        console0.print(markdown.Markdown(f"# Group {group.get('name')} additional traffic "
+                                         f"from {data[0].get('date')} to {data[-1].get('date')}"))
+        if additional_total > 1024 ** 3:
+            console0.print(f"[magenta]Additional upload[/]   = [cyan]{traffic_to_gb(additional_upload)}[/]")
+            console0.print(f"[magenta]Additional download[/] = [cyan]{traffic_to_gb(additional_download)}[/]")
+            console0.print(f"[magenta]Additional total[/]    = [cyan]{traffic_to_gb(additional_total)}[/]")
+        else:
+            console0.print(f"[magenta]Additional upload[/]   = [cyan]{traffic_to_mb(additional_upload)}[/]")
+            console0.print(f"[magenta]Additional download[/] = [cyan]{traffic_to_mb(additional_download)}[/]")
+            console0.print(f"[magenta]Additional total[/]    = [cyan]{traffic_to_mb(additional_total)}[/]")
+        if speed_total > 1024 ** 3:
+            console0.print(f"[magenta]Upload speed[/]   = [cyan]{traffic_to_gb(speed_upload).strip()}/day[/]")
+            console0.print(f"[magenta]Download speed[/] = [cyan]{traffic_to_gb(speed_download).strip()}/day[/]")
+            console0.print(f"[magenta]Total speed[/]    = [cyan]{traffic_to_gb(speed_total).strip()}/day[/]")
+        else:
+            console0.print(f"[magenta]Upload speed[/]   = [cyan]{traffic_to_mb(speed_upload).strip()}/day[/]")
+            console0.print(f"[magenta]Download speed[/] = [cyan]{traffic_to_mb(speed_download).strip()}/day[/]")
+            console0.print(f"[magenta]Total speed[/]    = [cyan]{traffic_to_mb(speed_total).strip()}/day[/]")
+
+        start_of_month = datetime.strptime(data[-1].get('date'), "%Y-%m-%d %H:%M:%S").replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0)
+        days_of_month = (start_of_month.replace(month=start_of_month.month + 1) - start_of_month).days
+        console0.print(
+            f"[magenta]Predicted by the speed "
+            f"to the period([cyan]{data[0].get('date')}[/] ~ [cyan]{data[-1].get('date')}[/]), "
+            f"by the end of the month([cyan]{start_of_month.strftime('%Y-%m')}[/]), "
+            f"the traffic used in total will be[/]\n [cyan]{traffic_to_gb(speed_total * days_of_month).strip()}[/]",
+            no_wrap=False)
+
+    def do_track(self, group_name):
+        """show group statistics of the current month, week, and day"""
+        group_name = group_name.lower()
+        groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
+        group = groups.get(group_name)
+        if group is None:
+            if not len(group_name):
+                print('Usage: track [group name]')
+            else:
+                console0.print(f'Group {group_name} not found', no_wrap=True)
+            return
+
+        try:
+            track_data = track_group(group.get('name') if group.get('name') else group_name)
+        except FileNotFoundError as e:
+            console0.print(f"Data of group {group_name} not found, check if the group are collected: {e}",
+                           no_wrap=True)
+            return
+        except json.JSONDecodeError as e:
+            console0.print(f"Data of group {group_name} is invalid, check if the group are collected: {e}",
+                           no_wrap=True)
+            return
+        except KeyError as e:
+            console0.print(f"Data of group {group_name} is invalid, check if the group are collected: {e}",
+                           no_wrap=True)
+            return
+        except ValueError as e:
+            console0.print(f"Data of group {group_name} is invalid, check if the group are collected: {e}",
+                           no_wrap=True)
+            return
+        max_key_len = max(len(k) for k in track_data.keys() if len(k) <= 30)
+        console0.print(markdown.Markdown(f"# Group {group.get('name')} track info"))
+        for k, v in track_data.items():
+            console0.print(f"[magenta]{k.ljust(max_key_len)}[/] = [cyan]{v}[/]"
+                           if len(k) <= 30 else f"[magenta]{k}[/] =\n [cyan]{v}[/]", no_wrap=True)
+
+
+class EditGroupShell(cmd.Cmd):
+    intend = MainShell.intend
 
     def __init__(self, group_name: str, group: dict):
         super().__init__()
@@ -538,6 +798,15 @@ class EditGroupCmd(cmd.Cmd):
             console0.print("---")
 
     def add_url(self, url):
+        """
+        Add a URL to the group's 'urls-with-token' list with a unique name, and print the URL data in JSON format.
+        
+        Parameters:
+            url (str): The URL to be added.
+            
+        Returns:
+            None
+        """
         i = 1
         name = f"subscribe{i}"
         while name in self.group.get('urls-with-token'):
@@ -548,6 +817,10 @@ class EditGroupCmd(cmd.Cmd):
         console0.print(json.dumps(url_data, indent=self.intend), no_wrap=True)
 
     def reset_url(self):
+        """
+        Reset the URL and clear the 'urls-with-token' group. 
+        Prompt the user to input a URL with a name, and append the URL data to the 'urls-with-token' group. 
+        """
         self.group['urls-with-token'].clear()
         i = 1
         while True:
@@ -606,5 +879,5 @@ class EditGroupCmd(cmd.Cmd):
 
 
 if __name__ == '__main__':
-    main_cmd = MainCmd()
-    main_cmd.cmdloop()
+    main_shell = MainShell()
+    main_shell.cmdloop()

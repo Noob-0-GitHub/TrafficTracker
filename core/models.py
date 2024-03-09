@@ -2,7 +2,7 @@ import json
 import os
 import warnings
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Iterable
 
 data_folder_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
@@ -60,7 +60,7 @@ def save_data(file_name, data):
     "total": 268435456000,
     "expire": 1719808630,
     "headers": {
-      "Content-Disposition": "attachment;filename=TAG",
+      "Content-Disposition": "attachment;filename=test",
       "Content-Type": "text/html; charset=UTF-8",
       "Date": "Sun, 03 Mar 2024 05:01:26 GMT",
       "Profile-Update-Interval": "24",
@@ -122,6 +122,42 @@ class TrafficDataList(list):
     def get_total_traffic(self):
         return [data_point.upload + data_point.download for data_point in self]
 
+    def get_additional_upload(self):
+        pre_total = None
+        result = []
+        for data_point in self:
+            point_total = data_point.get("upload")
+            if pre_total is None:
+                result.append(0)
+            else:
+                result.append(point_total - pre_total)
+            pre_total = point_total
+        return result
+
+    def get_additional_download(self):
+        pre_total = None
+        result = []
+        for data_point in self:
+            point_total = data_point.get("download")
+            if pre_total is None:
+                result.append(0)
+            else:
+                result.append(point_total - pre_total)
+            pre_total = point_total
+        return result
+
+    def get_additional_total_traffic(self):
+        pre_total = None
+        result = []
+        for data_point in self:
+            point_total = data_point.get("upload") + data_point.get("download")
+            if pre_total is None:
+                result.append(0)
+            else:
+                result.append(point_total - pre_total)
+            pre_total = point_total
+        return result
+
     def get_attr_total(self):
         return [data_point.total for data_point in self]
 
@@ -135,11 +171,12 @@ class TrafficDataList(list):
         return TrafficDataList(point for point in self if point.url == url)
 
     def get_data_by_date_range(self, start_date: datetime = None, end_date: datetime = None):
+        """return a list of TrafficDataPoint from start_date to before end_date"""
         if start_date is None:
             start_date = self[0].date
         if end_date is None:
-            end_date = self[-1].date
-        return TrafficDataList([point for point in self if start_date <= point.date <= end_date])
+            end_date = self[-1].date + timedelta(microseconds=1)
+        return TrafficDataList([point for point in self if start_date <= point.date < end_date])
 
     def get_data_with_gran(self, start_date: datetime = None, end_date: datetime = None,
                            granularity_sec: (int, None) = None) -> ("_GranDataList", None):
