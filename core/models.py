@@ -81,6 +81,7 @@ class TrafficDataPoint:
         self.date_in_str = data_point.get("date")
         self.upload = data_point.get("upload")
         self.download = data_point.get("download")
+        self.total_traffic = self.download + self.upload
         self.total = data_point.get("total")
         self.expire_in_ts = data_point.get("expire")
 
@@ -120,7 +121,7 @@ class TrafficDataList(list):
         return [data_point.download for data_point in self]
 
     def get_total_traffic(self):
-        return [data_point.upload + data_point.download for data_point in self]
+        return [data_point.total_traffic for data_point in self]
 
     def get_additional_upload(self):
         pre_total = None
@@ -150,7 +151,7 @@ class TrafficDataList(list):
         pre_total = None
         result = []
         for data_point in self:
-            point_total = data_point.get("upload") + data_point.get("download")
+            point_total = data_point.total_traffic
             if pre_total is None:
                 result.append(0)
             else:
@@ -194,9 +195,10 @@ class TrafficDataList(list):
         pre_point = None
         for point in self:
             if current_timestamp <= point.date_in_ts:
-                if pre_point is not None:
-                    result_data.append(_GranDataPoint(pre_point, point, current_timestamp))
-                else:
+                while current_timestamp < point.date_in_ts:
+                    result_data.append(_GranDataPoint(pre_point, point, current_timestamp) if pre_point is not None else point)
+                    current_timestamp += granularity_sec
+                if current_timestamp == point.date_in_ts:
                     result_data.append(point)
                 pre_point = point
             else:
@@ -205,6 +207,8 @@ class TrafficDataList(list):
             current_timestamp += granularity_sec
             if current_timestamp >= end_timestamp:
                 break
+..
+        return _GranDataList(result_data, granularity_sec=granularity_sec)
 
 
 @dataclass
@@ -221,20 +225,32 @@ class _GranDataPoint:
         if getattr(self.pre_point, attr, None) is None or getattr(self.next_point, attr, None) is None:
             raise ValueError(f"{attr} not found")
         try:
-            return ((getattr(self.next_point, attr) * (self.next_point.date_in_ts - self.date_in_ts)
-                     - getattr(self.pre_point, attr) * (self.date_in_ts - self.pre_point.date_in_ts))
-                    / (self.next_point.date_in_ts - self.pre_point.date_in_ts))
+            # incomplete
+            # return ((getattr(self.next_point, attr) * (self.next_point.date_in_ts - self.date_in_ts)
+            #          - getattr(self.pre_point, attr) * (self.date_in_ts - self.pre_point.date_in_ts))
+            #         / (self.next_point.date_in_ts - self.pre_point.date_in_ts))
+            x1 = getattr(self.pre_point, attr)
+            x2 = getattr(self.next_point, attr)
+            w1 = self.next_point.date_in_ts - self.date_in_ts
+            assert w1 > 0
+            w2 = self.date_in_ts - self.pre_point.date_in_ts
+            assert w2 > 0
+            return (x1 * w1 + x2 * w2) / (w1 + w2)
         except Exception as e:
             raise ValueError(f"{attr} not supported: {e}")
 
-    def get_upload(self):
+    # must be same as TrafficDataPoint
+    @property
+    def upload(self):
         return self.get_attr_weight_average('upload')
 
-    def get_download(self):
+    @property
+    def download(self):
         return self.get_attr_weight_average('download')
 
-    def get_total_traffic(self):
-        return self.get_upload() + self.get_download()
+    @property
+    def total_traffic(self):
+        return self.upload + self.download
 
 
 class _GranDataList(list):
@@ -266,21 +282,21 @@ class _GranDataList(list):
                 continue
 
     def get_upload(self):
-        return [item.get_upload() for item in self]
+        return [item.upload for item in self]
 
     def get_download(self):
-        return [item.get_download() for item in self]
+        return [item.download for item in self]
 
     def get_total_traffic(self):
-        return [item.get_download() + item.get_upload() for item in self]
+        return [item.total_traffic for item in self]
 
     def get_additional_upload(self):
         if len(self) < 1:
             return []
-        pre_point_upload = self[0].get_upload()
+        pre_point_upload = self[0].upload
         result = []
         for point in self:
-            point_upload = point.get_upload()
+            point_upload = point.upload
             result.append(point_upload - pre_point_upload)
             pre_point_upload = point_upload
         return result
@@ -299,10 +315,10 @@ class _GranDataList(list):
     def get_additional_total_traffic(self):
         if len(self) < 1:
             return []
-        pre_point_total = self[0].get_total_traffic()
+        pre_point_total = self[0].total_traffic
         result = []
         for point in self:
-            point_total = point.get_total_traffic()
+            point_total = point.total_traffic
             result.append(point_total - pre_point_total)
             pre_point_total = point_total
         return result
@@ -327,7 +343,7 @@ def _test():
     from rich import print
     from main import parse_data
 
-    data = parse_data("TAG.json")
+    data = parse_data([json_file for json_file in os.listdir(data_folder_path) if json_file.endswith('.json')][0])
     print(data)
 
     data_list = TrafficDataList.from_list(data)

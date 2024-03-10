@@ -535,7 +535,7 @@ class MainShell(cmd.Cmd):
         console0.print("datafiles:", no_wrap=True)
         console0.print(datafiles, no_wrap=True)
         _r = console_input("merge? (Y/n)")
-        if _r.lower() != "n":
+        if _r.lower() == "n":
             return
 
         # merge
@@ -546,7 +546,7 @@ class MainShell(cmd.Cmd):
             data = parse_json(datafile)
             for point in data:
                 try:
-                    point_date: float = datetime.strptime(groups.get(point['date']), "%Y-%m-%d %H:%M:%S").timestamp()
+                    point_date: float = datetime.strptime(point.get('date'), ."%Y-%m-%d %H:%M:%S").timestamp()
                 except Exception as e:
                     console0.print(f"Error parsing date {point['date']}: {e}", no_wrap=True)
                     continue
