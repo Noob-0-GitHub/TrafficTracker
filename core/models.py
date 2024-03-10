@@ -207,7 +207,7 @@ class TrafficDataList(list):
             current_timestamp += granularity_sec
             if current_timestamp >= end_timestamp:
                 break
-..
+
         return _GranDataList(result_data, granularity_sec=granularity_sec)
 
 
