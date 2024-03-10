@@ -544,16 +544,21 @@ class MainShell(cmd.Cmd):
         recorded_date = set()
         for datafile in datafiles:
             data = parse_json(datafile)
+            successful_points = 0
             for point in data:
                 try:
                     point_date: float = datetime.strptime(point.get('date'), "%Y-%m-%d %H:%M:%S").timestamp()
                 except Exception as e:
                     console0.print(f"Error parsing date {point['date']}: {e}", no_wrap=True)
                     continue
+                else:
+                    successful_points += 1
                 if point_date in recorded_date:
                     continue
                 recorded_date.add(point_date)
                 points.append(point)
+            console0.print(f"Merged datafile {datafile} into {group_name}.json: "
+                           f"{successful_points} points added", no_wrap=True)
         points.sort(key=lambda x: datetime.strptime(x['date'], "%Y-%m-%d %H:%M:%S").timestamp())
 
         # noinspection PyTypeChecker
