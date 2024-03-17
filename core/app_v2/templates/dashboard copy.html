@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Dashboard</title>
+    <!-- Include Bootstrap CSS for styling -->
+    <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
+    <!-- Include custom CSS for additional styling -->
+    <link href="{{ url_for('static', filename='custom.css') }}" rel="stylesheet">
+    <!-- Set One Dark theme colors -->
+    <style>
+        body {
+            background-color: #282c34;
+            color: #abb2bf;
+        }
+        table.table {
+            background-color: #1e2127;
+        }
+        table.table th,
+        table.table td {
+            border-color: #2c323d;
+        }
+        table.table th {
+            color: #61afef;
+        }
+        a {
+            color: #61afef;
+        }
+        a:hover {
+            color: #98c379;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5 mb-4">Traffic Dashboard</h1>
+        <!-- Display the Plotly graph -->
+        <div class="row">
+            <div class="col-lg-8">
+                {{ graph_html | safe }}
+            </div>
+        </div>
+        <!-- Display the statistics table -->
+        <div class="row mt-5">
+            <div class="col-lg-12">
+                <h2>Statistics</h2>
+                <table class="table table-dark">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Visits</th>
+                            <th>Pageviews</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in data %}
+                        <tr>
+                            <td>{{ item.Date }}</td>
+                            <td>{{ item.Visits }}</td>
+                            <td>{{ item.Pageviews }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
