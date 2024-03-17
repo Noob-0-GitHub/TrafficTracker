@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Usage Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        /* Custom styles for dark mode */
+        body {
+            background-color: #1e1e1e; /* Onedark background color */
+            color: #d4d4d4; /* Onedark text color */
+        }
+        #chart-container {
+            width: 80%;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+<h1>Traffic Usage Dashboard</h1>
+<div id="chart-container">
+    <!-- Plotly chart will be rendered here -->
+    {{ chart.to_html() | safe }}
+</div>
+</body>
+</html>

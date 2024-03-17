@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Dashboard</title>
+    <!-- Include Bootstrap CSS for styling -->
+    <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
+    <!-- Include custom CSS for additional styling -->
+    <link href="{{ url_for('static', filename='custom.css') }}" rel="stylesheet">
+    <!-- Set One Dark theme colors -->
+    <style>
+        body {
+            background-color: #282c34;
+            color: #abb2bf;
+        }
+        table.table {
+            background-color: #1e2127;
+        }
+        table.table th,
+        table.table td {
+            border-color: #2c323d;
+        }
+        table.table th {
+            color: #61afef;
+        }
+        a {
+            color: #61afef;
+        }
+        a:hover {
+            color: #98c379;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5 mb-4">Traffic Dashboard</h1>
+        <canvas id="chart"></canvas>
+    </div>
+
+    <!-- Include Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Function to make AJAX request and plot chart
+        function fetchDataAndPlotChart() {
+            // Make AJAX request to fetch data
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "/get_data", true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var data = JSON.parse(xhr.responseText);
+                    plotChart(data);
+                }
+            };
+            xhr.send();
+        }
+
+        // Function to plot chart using Chart.js
+        function plotChart(data) {
+            var dates = data['dates'];
+            var visits = data['visits'];
+            var pageviews = data['pageviews'];
+
+            var ctx = document.getElementById('chart').getContext('2d');
+            var myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Visits',
+                        data: visits,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Pageviews',
+                        data: pageviews,
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        xAxes: [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Date'
+                            }
+                        }],
+                        yAxes: [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Count'
+                            }
+                        }]
+                    },
+                    title: {
+                        display: true,
+                        text: 'Traffic Usage'
+                    },
+                    legend: {
+                        display: true,
+                        labels: {
+                            fontColor: '#61afef'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Call the function to fetch data and plot chart on page load
+        window.onload = function () {
+            fetchDataAndPlotChart();
+        };
+    </script>
+</body>
+</html>

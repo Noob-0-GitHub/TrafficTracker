@@ -228,10 +228,12 @@ def track_group(group_name) -> OrderedDict[str, str]:
     week_additional_upload_traffic = latest_point.get('upload') - week_earliest_point.get('upload')
     week_additional_download_traffic = latest_point.get('download') - week_earliest_point.get('download')
     week_additional_traffic = week_additional_upload_traffic + week_additional_download_traffic
+    # todo: week prediction is incorrect
     week_speed_of_day = week_additional_traffic / (latest_date - start_of_week).days
     week_traffic_predicted = (week_speed_of_day * 7 +
                               week_earliest_point.get('upload') + week_earliest_point.get('download'))
 
+    # todo:week prediction is incorrect
     week_traffic_predicted_by_month = total_traffic + month_speed_of_day * (latest_date - start_of_month).days
     month_traffic_predicted_by_week = total_traffic + week_speed_of_day * (start_of_month.replace(
         month=start_of_month.month + 1) - latest_date).days
@@ -252,16 +254,16 @@ def track_group(group_name) -> OrderedDict[str, str]:
     track_data['Upload traffic used'] = traffic_to_gb(total_upload)
     track_data['Download traffic used'] = traffic_to_gb(total_download)
     track_data['Total traffic used'] = traffic_to_gb(total_traffic)
-    track_data['Upload in latest week'] = traffic_to_gb(week_additional_upload_traffic)
-    track_data['Download in latest week'] = traffic_to_gb(week_additional_download_traffic)
-    track_data['Total in latest week'] = traffic_to_gb(week_additional_traffic)
+    track_data['Upload in latest 7days'] = traffic_to_gb(week_additional_upload_traffic)
+    track_data['Download in latest 7days'] = traffic_to_gb(week_additional_download_traffic)
+    track_data['Total in latest 7days'] = traffic_to_gb(week_additional_traffic)
     track_data['Current available traffic'] = traffic_to_gb(available_traffic)
     track_data['Used percentage'] = f"{used_percent * 100:.{precision}f}%" \
         if precision >= 0 else f"{used_percent * 100}%"
     track_data['Available percentage'] = f"{available_percent * 100:.{precision}f}%" \
         if precision >= 0 else f"{available_percent * 100}%"
     track_data['Average speed of day in month'] = f"{traffic_to_gb(month_speed_of_day).rstrip()}/day"
-    track_data['Average speed of day in week'] = f"{traffic_to_gb(week_speed_of_day).rstrip()}/day"
+    track_data['Average speed of day in 7days'] = f"{traffic_to_gb(week_speed_of_day).rstrip()}/day"
     track_data['Traffic will be used by the end of the month predicted by the current month data'] = \
         traffic_to_gb(month_traffic_predicted)
     track_data['Traffic will be used by the end of the month predicted by the current week data'] = \
