@@ -179,8 +179,8 @@ class TrafficDataList(list):
             end_date = self[-1].date + timedelta(microseconds=1)
         return TrafficDataList([point for point in self if start_date <= point.date < end_date])
 
-    def get_data_with_gran(self, start_date: datetime = None, end_date: datetime = None,
-                           granularity_sec: (int, None) = None) -> ("_GranDataList", None):
+    def get_data_by_gran(self, start_date: datetime = None, end_date: datetime = None,
+                         granularity_sec: (int, None) = None) -> ("GranDataList", None):
         if start_date is None:
             start_date = self[0].date
         if end_date is None:
@@ -188,31 +188,44 @@ class TrafficDataList(list):
         result_data = list()
 
         if granularity_sec is None:
-            return _GranDataList(self.get_data_by_date_range(start_date, end_date))
+            return GranDataList(self.get_data_by_date_range(start_date, end_date))
 
         current_timestamp = start_date.timestamp()
         end_timestamp = end_date.timestamp()
         pre_point = None
         for point in self:
             if current_timestamp <= point.date_in_ts:
-                while current_timestamp < point.date_in_ts:
-                    result_data.append(_GranDataPoint(pre_point, point, current_timestamp) if pre_point is not None else point)
+                # while current_timestamp < point.date_in_ts:
+                while current_timestamp < point.date_in_ts and current_timestamp < end_timestamp:
+                    result_data.append(GranDataPoint(pre_point, point, current_timestamp)
+                                       if pre_point is not None else point)
                     current_timestamp += granularity_sec
                 if current_timestamp == point.date_in_ts:
                     result_data.append(point)
+                    current_timestamp += granularity_sec
                 pre_point = point
             else:
                 pre_point = point
                 continue
-            current_timestamp += granularity_sec
+            # current_timestamp += granularity_sec
             if current_timestamp >= end_timestamp:
                 break
 
-        return _GranDataList(result_data, granularity_sec=granularity_sec)
+        return GranDataList(result_data, granularity_sec=granularity_sec)
+
+    def get_data_by_count(self, _count: int, start_date: datetime = None, end_date: datetime = None):
+        if _count <= 0:
+            return
+        if start_date is None:
+            start_date = self[0].date
+        if end_date is None:
+            end_date = self[-1].date
+        _granularity = (end_date - start_date).total_seconds() / _count
+        return self.get_data_by_gran(start_date=start_date, end_date=end_date, granularity_sec=_granularity)
 
 
 @dataclass
-class _GranDataPoint:
+class GranDataPoint:
     pre_point: TrafficDataPoint
     next_point: TrafficDataPoint
     date_in_ts: float
@@ -253,10 +266,12 @@ class _GranDataPoint:
         return self.upload + self.download
 
 
-class _GranDataList(list):
-    def __init__(self, items: Iterable[_GranDataPoint | TrafficDataPoint],
+class GranDataList(list):
+    def __init__(self, items: Iterable[GranDataPoint | TrafficDataPoint],
                  granularity_sec: int = None):
         super().__init__()
+        if not all(isinstance(item, (GranDataPoint, TrafficDataPoint)) for item in items):
+            raise ValueError("items must be TrafficDataPoint or GranDataPoint")
         self.extend(items)
         if granularity_sec is None:
             granularity_sec = 1
@@ -265,7 +280,7 @@ class _GranDataList(list):
     def get_pre_points(self):
         lst = []
         for item in self:
-            if isinstance(item, _GranDataPoint):
+            if isinstance(item, GranDataPoint):
                 lst.append(item.pre_point)
             elif isinstance(item, TrafficDataPoint):
                 lst.append(item)
@@ -274,12 +289,18 @@ class _GranDataList(list):
     def get_next_points(self):
         lst = []
         for item in self:
-            if isinstance(item, _GranDataPoint):
+            if isinstance(item, GranDataPoint):
                 lst.append(item.next_point)
             elif isinstance(item, TrafficDataPoint):
                 lst.append(item)
             else:
                 continue
+
+    def get_date(self):
+        return [item.date for item in self]
+
+    def get_date_in_ts(self):
+        return [item.date_in_ts for item in self]
 
     def get_upload(self):
         return [item.upload for item in self]
@@ -338,6 +359,9 @@ class _GranDataList(list):
             return []
         return [additional / self.granularity_sec for additional in self.get_additional_total_traffic()]
 
+    def get_data_by_gran(self, granularity_sec: int):
+        return GranDataList(self, granularity_sec=granularity_sec)
+
 
 def _test():
     from rich import print
@@ -346,14 +370,28 @@ def _test():
     data = parse_data([json_file for json_file in os.listdir(data_folder_path) if json_file.endswith('.json')][0])
     print(data)
 
+    print("Get all data into data list:")
     data_list = TrafficDataList.from_list(data)
     print(data_list)
 
     print(data_list.get_total_traffic())
 
-    gran: _GranDataList = data_list.get_data_with_gran(granularity_sec=600)
+    gran: GranDataList = data_list.get_data_by_gran(granularity_sec=600)
     print(gran.get_total_traffic())
     print(gran.get_rate_sec())
+    print(data_list.get_date())
+    print([gran.get_date_in_ts()[i] - gran.get_date_in_ts()[i - 1]
+           for i in range(1, len(gran))])
+    print(gran.granularity_sec)
+
+    print("Gran with count 10:")
+    gran_with_count: GranDataList = data_list.get_data_by_count(_count=10)
+    print(gran_with_count.get_total_traffic())
+    print(gran_with_count.get_rate_sec())
+    print(gran_with_count.get_date())
+    print([gran_with_count.get_date_in_ts()[i] - gran_with_count.get_date_in_ts()[i - 1]
+           for i in range(1, len(gran_with_count))])
+    print(gran_with_count.granularity_sec)
 
 
 if __name__ == '__main__':

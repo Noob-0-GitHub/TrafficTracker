@@ -25,7 +25,7 @@ def _test():
         # data = TrafficDataList.from_list(parse_data(f"{input('group name = ')}.json"))
         data = TrafficDataList.from_list(parse_data(f"TAG.json"))
         print(len(data))
-        data_with_gran = data.get_data_with_gran(granularity_sec=60 * 60)
+        data_with_gran = data.get_data_by_gran(granularity_sec=60 * 60)
         print(len(data_with_gran))
         print(data_with_gran.get_total_traffic())
         print(data_with_gran.get_additional_total_traffic())
