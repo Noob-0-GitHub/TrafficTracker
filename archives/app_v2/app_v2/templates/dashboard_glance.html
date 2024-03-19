@@ -69,68 +69,61 @@
             };
             xhr.send();
         }
-
+    
         // Function to plot chart using Chart.js
         function plotChart(graphInfo) {
-            if (graphInfo['type'] == 'line'){
+            if (graphInfo['type'] == 'line') {
                 var xAxes = graphInfo['x-axes'];
                 var yAxes = graphInfo['y-axes'];
                 var lines = graphInfo['lines'];
-
-                datasets = [];
+    
+                var datasets = [];
                 lines.forEach(function(line) {
-                    var backgroundColor = line['background-color'];
-                    if (!backgroundColor) {
-                        backgroundColor = 'rgba(75, 192, 192, 0.2)';
-                    }
-                    var borderColor = line['border-color'];
-                    if (!borderColor) {
-                        borderColor = 'rgba(75, 192, 192, 1)';
-                    }
-                    var borderWidth = line['border-width'];
-                    if (!borderWidth) {
-                        borderWidth = 1
-                    }
+                    var backgroundColor = line['background-color'] || 'rgba(75, 192, 192, 00.2)';
+                    var borderColor = line['border-color'] || 'rgba(75, 192, 192, 1)';
+                    var borderWidth = line['border-width'] || 1;
+                    var tension = line['tension'] || 0.25;
+                    
                     datasets.push({
                         label: line['label'],
                         data: line['data'],
                         backgroundColor: backgroundColor,
                         borderColor: borderColor,
-                        borderWidth: borderWidth
-                    })
-                })
-
+                        borderWidth: borderWidth,
+                        tension: tension
+                    });
+                });
+    
                 var ctx = document.getElementById('chart').getContext('2d');
                 var newChart = new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: xAxes['labels'],
                         datasets: datasets
-                    }
-                } 
-                options: {
-                    scales: {
-                        xAxes: [{
-                            scaleLabel: {
-                                display: true,
-                                labelString: xAxes['name']
-                            }
-                        }],
-                        yAxes: [{
-                            scaleLabel: {
-                                display: true,
-                                labelString: yAxes['name']
-                            }
-                        }]
+                    },
+                    options: {
+                        scales: {
+                            xAxes: [{
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: xAxes['name']
+                                }
+                            }],
+                            yAxes: [{
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: yAxes['name']
+                                }
+                            }]
+                        }
                     }
                 });
-                document.querySelector('container').appendChild(newChart);
             }
         }
         // Call the function to fetch data and plot chart on page load
         window.onload = function () {
             fetchDataAndPlotChart();
         };
-    </script>
+    </script>    
 </body>
 </html>

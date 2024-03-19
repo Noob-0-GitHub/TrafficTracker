@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Dashboard</title>
+    <!-- Include Bootstrap CSS for styling -->
+    <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
+    <!-- Include custom CSS for additional styling -->
+    <link href="{{ url_for('static', filename='custom.css') }}" rel="stylesheet">
+    <!-- Set One Dark theme colors -->
+    <style>
+        body {
+            background-color: #282c34;
+            color: #abb2bf;
+            overflow: auto;
+            scrollbar-base-color: #282c34;
+        }
+        a {
+            color: #61afef;
+        }
+        a:hover {
+            color: #98c379;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        /* Track */
+        ::-webkit-scrollbar-track {
+            background: #1e2127;
+        }
+
+        /* Handle */
+        ::-webkit-scrollbar-thumb {
+            background: #4b5263;
+            border-radius: 6px;
+        }
+
+        /* Handle on hover */
+        ::-webkit-scrollbar-thumb:hover {
+            background: #565d6c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5 mb-4" style="text-align: center;">Traffic Dashboard</h1>
+        <div id="chartsContainer" class="row">
+            <!-- Canvas elements will be dynamically added here -->
+        </div>
+    </div>
+    <!-- Include Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Function to make AJAX request and plot chart
+        function fetchDataAndPlotCharts() {
+            // Make AJAX request to fetch data for charts
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "/get_data", true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var dataList = JSON.parse(xhr.responseText);
+                    dataList.forEach(function(plotInfo, index) {
+                        // Dynamically add canvas element
+                        var canvasId = "chart" + (index + 1);
+                        var canvasContainer = document.createElement("div");
+                        canvasContainer.className = "col-md-6";
+                        canvasContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+                        document.getElementById("chartsContainer").appendChild(canvasContainer);
+                        // Plot chart
+                        plotChart(plotInfo, canvasId);
+                    });
+                }
+            };
+            xhr.send();
+        }
+    
+        // Function to plot chart using Chart.js
+        function plotChart(plotInfo, canvasId) {
+            var ctx = document.getElementById(canvasId).getContext('2d');
+            var newChart = new Chart(ctx, {
+                type: 'line',
+                data: plotInfo
+            });
+        }
+        // Call the function to fetch data and plot charts on page load
+        window.onload = function () {
+            fetchDataAndPlotCharts();
+        };
+    </script>    
+</body>
+</html>

@@ -165,6 +165,9 @@ class TrafficDataList(list):
     def get_date(self):
         return [data_point.date for data_point in self]
 
+    def get_date_in_str(self, date_format="%Y-%m-%d %H:%M:%S"):
+        return [data_point.date.strftime(date_format) for data_point in self]
+
     def get_date_in_ts(self):
         return [data_point.date_in_ts for data_point in self]
 
@@ -213,9 +216,9 @@ class TrafficDataList(list):
 
         return GranDataList(result_data, granularity_sec=granularity_sec)
 
-    def get_data_by_count(self, _count: int, start_date: datetime = None, end_date: datetime = None):
+    def get_data_by_count(self, _count: int, start_date: datetime = None, end_date: datetime = None) -> "GranDataList":
         if _count <= 0:
-            return
+            raise ValueError("count must > 0")
         if start_date is None:
             start_date = self[0].date
         if end_date is None:
@@ -299,6 +302,9 @@ class GranDataList(list):
     def get_date(self):
         return [item.date for item in self]
 
+    def get_date_in_str(self, date_format="%Y-%m-%d %H:%M:%S"):
+        return [item.date.strftime(date_format) for item in self]
+
     def get_date_in_ts(self):
         return [item.date_in_ts for item in self]
 
@@ -325,10 +331,10 @@ class GranDataList(list):
     def get_additional_download(self):
         if len(self) < 1:
             return []
-        pre_point_download = self[0].get_download()
+        pre_point_download = self[0].download
         result = []
         for point in self:
-            point_download = point.get_download()
+            point_download = point.download
             result.append(point_download - pre_point_download)
             pre_point_download = point_download
         return result
@@ -375,18 +381,23 @@ def _test():
     print(data_list)
 
     print(data_list.get_total_traffic())
+    print(data_list.get_download())
+    input("Press Enter to continue...")
 
     gran: GranDataList = data_list.get_data_by_gran(granularity_sec=600)
     print(gran.get_total_traffic())
+    print(gran.get_download())
     print(gran.get_rate_sec())
     print(data_list.get_date())
     print([gran.get_date_in_ts()[i] - gran.get_date_in_ts()[i - 1]
            for i in range(1, len(gran))])
     print(gran.granularity_sec)
+    input("Press Enter to continue...")
 
     print("Gran with count 10:")
     gran_with_count: GranDataList = data_list.get_data_by_count(_count=10)
     print(gran_with_count.get_total_traffic())
+    print(gran_with_count.get_download())
     print(gran_with_count.get_rate_sec())
     print(gran_with_count.get_date())
     print([gran_with_count.get_date_in_ts()[i] - gran_with_count.get_date_in_ts()[i - 1]

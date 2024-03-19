@@ -1,39 +1,89 @@
-from math import log2
-
-import asciichartpy as acp
-
-from models import TrafficDataList
+import json
+from dataclasses import dataclass, asdict, is_dataclass
+from datetime import datetime
 
 
-def plot_total_traffic(traffic_data_list: TrafficDataList):
-    return acp.plot([point / (1024 ** 3) / 10 for point in traffic_data_list.get_total_traffic()][:128])
+def del_null_in_dict(d: dict):
+    for k, v in list(d.items()):
+        if v is None:
+            del d[k]
+        elif isinstance(v, dict):
+            del_null_in_dict(v)
+    return d
 
 
-def plot_additional_total_traffic(traffic_data_list: TrafficDataList):
-    return acp.plot([point / (1024 ** 3) for point in traffic_data_list.get_additional_total_traffic()][:128])
+class JSONEncoder(json.JSONEncoder):
+    del_null = True
+
+    def default(self, obj):
+        if is_dataclass(obj):
+            return del_null_in_dict(asdict(obj)) if JSONEncoder.del_null else asdict(obj)
+        elif isinstance(obj, datetime):
+            return obj.isoformat()
+        return json.JSONEncoder.default(self, obj)
 
 
-def plot_rate(traffic_data_list: TrafficDataList):
-    return acp.plot(
-        [int(round(log2(point // (1024 ** 1)+1))) for point in traffic_data_list.get_rate_sec()][:128])
+class ChartJS:
+    @dataclass
+    class Line:
+        """
+        Args:
+            label: str # line name
+            data: list[float | int]
+            borderColor: str
+            borderWidth: int
+            backgroundColor: str
+            pointRadius: int
+            tension: float
+        """
+        label: str  # line name
+        data: list[float | int]
+        borderColor: str = None
+        borderWidth: int = 1
+        backgroundColor: str = None
+        pointRadius: int = 0
+        tension: float = 0.1
+
+    @dataclass
+    class _LinePlot:
+        """
+        Args:
+            name: str
+            datasets: list["ChartJS.Line"]  # lines
+            labels: list[str] = None  # labels for main axes(input axes)
+        """
+        name: str
+        datasets: list["ChartJS.Line"]  # lines
+        labels: list[str] = None  # labels for main axes(input axes)
+        # x_axes_name: str = "x"
+        # y_axes_name: str = "y"
+        # x_axes_labels: list = None
+        # y_axes_labels: list = None
+
+        type: str = "line"
+
+    def __init__(self):
+        self.plots = []
+
+    def add_line_plot(self, name: str, datasets: list[Line], labels: list[str] = None):
+        self.plots.append(self._LinePlot(name=name, datasets=datasets, labels=labels))
+
+    def json(self) -> str:
+        return json.dumps(self.plots, cls=JSONEncoder)
+
+    def asdict(self):
+        return json.loads(self.json())
 
 
 def _test():
-    from main import parse_data
+    chart_js_plot = ChartJS()
 
-    while True:
-        # data = TrafficDataList.from_list(parse_data(f"{input('group name = ')}.json"))
-        data = TrafficDataList.from_list(parse_data(f"TAG.json"))
-        print(len(data))
-        data_with_gran = data.get_data_by_gran(granularity_sec=60 * 60)
-        print(len(data_with_gran))
-        print(data_with_gran.get_total_traffic())
-        print(data_with_gran.get_additional_total_traffic())
-        # print(plot_total_traffic(data_with_gran))
-        # print(plot_additional_total_traffic(data_with_gran))
-        # print(data_with_gran.get_rate_sec())
-        # print(plot_rate(data_with_gran))
-        input()
+    chart_js_plot.add_line_plot(name="test", datasets=[
+        ChartJS.Line(label="line1", data=[1, 2, 3, 4, 5], borderColor="red", borderWidth=1, backgroundColor="red",
+                     pointRadius=1, tension=0.5),
+    ])
+
+    print(chart_js_plot.json())
 
 
 if __name__ == '__main__':
