@@ -59,7 +59,7 @@
         function fetchDataAndPlotCharts() {
             // Make AJAX request to fetch data for charts
             var xhr = new XMLHttpRequest();
-            xhr.open("GET", "/get_data", true);
+            xhr.open("GET", "/get_data_glance", true);
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     var dataList = JSON.parse(xhr.responseText);
@@ -81,9 +81,48 @@
         // Function to plot chart using Chart.js
         function plotChart(plotInfo, canvasId) {
             var ctx = document.getElementById(canvasId).getContext('2d');
+
             var newChart = new Chart(ctx, {
                 type: 'line',
-                data: plotInfo
+                data: plotInfo,
+                options: {
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: plotInfo.xAxisName || 't',
+                                color: plotInfo.xAxisNameColor,
+                                font: {
+                                    size: plotInfo.xAxisNameFontSize
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: plotInfo.yAxisName || '',
+                                color: plotInfo.yAxisNameColor,
+                                font: {
+                                    size: plotInfo.yAxisNameFontSize
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: plotInfo.interactionMode || 'index',
+                        intersect: plotInfo.intersectInteraction || false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: plotInfo.title || '',
+                            color: plotInfo.titleColor,
+                            font: {
+                                size: plotInfo.titleFontSize
+                            }
+                        }
+                    }
+                }
             });
         }
         // Call the function to fetch data and plot charts on page load

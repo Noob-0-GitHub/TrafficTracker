@@ -226,6 +226,22 @@ class TrafficDataList(list):
         _granularity = (end_date - start_date).total_seconds() / _count
         return self.get_data_by_gran(start_date=start_date, end_date=end_date, granularity_sec=_granularity)
 
+    def latest_month_data(self) -> "TrafficDataList":
+        start_of_latest_month = self[-1].date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return self.get_data_by_date_range(start_date=start_of_latest_month, end_date=datetime.now())
+
+    def latest_7days_data(self) -> "TrafficDataList":
+        start_of_latest_month = self[-1].date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_of_latest_7days = (self[-1].date - timedelta(days=7)) if (
+                (self[-1].date - start_of_latest_month).days > 7) else start_of_latest_month
+        return self.get_data_by_date_range(start_date=start_of_latest_7days, end_date=datetime.now())
+
+    def latest_24hours_data(self) -> "TrafficDataList":
+        start_of_latest_month = self[-1].date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_of_latest_24hours = (self[-1].date - timedelta(hours=24)) if (
+                (self[-1].date - start_of_latest_month).days > 1) else start_of_latest_month
+        return self.get_data_by_date_range(start_date=start_of_latest_24hours, end_date=datetime.now())
+
 
 @dataclass
 class GranDataPoint:
@@ -367,6 +383,14 @@ class GranDataList(list):
 
     def get_data_by_gran(self, granularity_sec: int):
         return GranDataList(self, granularity_sec=granularity_sec)
+
+
+def list_to_mb(data: list[float | int]):
+    return [item / 1024 / 1024 for item in data]
+
+
+def list_to_gb(data: list[float | int]):
+    return [item / 1024 / 1024 / 1024 for item in data]
 
 
 def _test():

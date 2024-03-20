@@ -24,8 +24,12 @@ class JSONEncoder(json.JSONEncoder):
 
 
 class ChartJS:
+    """
+    Interface for Chart.js
+    """
+
     @dataclass
-    class Line:
+    class _Line:
         """
         Args:
             label: str # line name
@@ -38,35 +42,49 @@ class ChartJS:
         """
         label: str  # line name
         data: list[float | int]
-        borderColor: str = None
-        borderWidth: int = 1
-        backgroundColor: str = None
-        pointRadius: int = 0
-        tension: float = 0.1
+        borderColor: str
+        borderWidth: int
+        backgroundColor: str
+        pointRadius: int
+        tension: float
+
+    @classmethod
+    def Line(cls, name: str, data: list[float | int], border_color: str = None, border_width: int = 1,
+             background_color: str = None, point_radius: int = 0, tension: float = 0.1) -> _Line:
+        return cls._Line(label=name, data=data, borderColor=border_color, borderWidth=border_width,
+                         backgroundColor=background_color, pointRadius=point_radius, tension=tension)
 
     @dataclass
-    class _LinePlot:
+    class LinePlot:
         """
         Args:
-            name: str
+            title: str
             datasets: list["ChartJS.Line"]  # lines
-            labels: list[str] = None  # labels for main axes(input axes)
+            labels: list[str] = None  # labels for main axis(input axis)
         """
-        name: str
         datasets: list["ChartJS.Line"]  # lines
-        labels: list[str] = None  # labels for main axes(input axes)
-        # x_axes_name: str = "x"
-        # y_axes_name: str = "y"
-        # x_axes_labels: list = None
-        # y_axes_labels: list = None
-
-        type: str = "line"
+        labels: list[str] = None  # labels for main axis(input axis)
+        title: str = None
+        titleColor: str = None
+        titleFontSize: int = None
+        xAxisName: str = None
+        xAxisColor: str = None
+        xAxisFontSize: int = None
+        yAxisName: str = None
+        yAxisColor: str = None
+        yAxisFontSize: int = None
 
     def __init__(self):
         self.plots = []
 
-    def add_line_plot(self, name: str, datasets: list[Line], labels: list[str] = None):
-        self.plots.append(self._LinePlot(name=name, datasets=datasets, labels=labels))
+    def add_line_plot(self, title: str, lines: list[Line], labels: list[str] = None,
+                      title_color: str = None, title_font_size: int = None,
+                      x_axis_name: str = None, x_axis_color: str = None, x_axis_font_size: int = None,
+                      y_axis_name: str = None, y_axis_color: str = None, y_axis_font_size: int = None):
+        self.plots.append(self.LinePlot(title=title, datasets=lines, labels=labels,
+                                        titleColor=title_color, titleFontSize=title_font_size,
+                                        xAxisName=x_axis_name, xAxisColor=x_axis_color, xAxisFontSize=x_axis_font_size,
+                                        yAxisName=y_axis_name, yAxisColor=y_axis_color, yAxisFontSize=y_axis_font_size))
 
     def json(self) -> str:
         return json.dumps(self.plots, cls=JSONEncoder)
@@ -75,12 +93,21 @@ class ChartJS:
         return json.loads(self.json())
 
 
+class PlotlyJS:
+    """
+    Interface for Plotly.js
+    """
+
+    def __init__(self):
+        self.plots = []
+
+
 def _test():
     chart_js_plot = ChartJS()
 
-    chart_js_plot.add_line_plot(name="test", datasets=[
-        ChartJS.Line(label="line1", data=[1, 2, 3, 4, 5], borderColor="red", borderWidth=1, backgroundColor="red",
-                     pointRadius=1, tension=0.5),
+    chart_js_plot.add_line_plot(title="test", lines=[
+        ChartJS.Line(name="line1", data=[1, 2, 3, 4, 5], border_color="red", border_width=1, background_color="red",
+                     point_radius=1, tension=0.5),
     ])
 
     print(chart_js_plot.json())
