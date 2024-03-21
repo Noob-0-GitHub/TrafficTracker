@@ -1,14 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8"
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Traffic Dashboard</title>
-    <!-- Include Bootstrap CSS for styling -->
-    <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
-    <!-- Include custom CSS for additional styling -->
-    <link href="{{ url_for('static', filename='custom.css') }}" rel="stylesheet">
     <!-- Set One Dark theme colors -->
     <style>
         body {
@@ -16,6 +12,16 @@
             color: #abb2bf;
             overflow: auto;
             scrollbar-base-color: #282c34;
+        }
+        .horizontal-row {
+            display: flex;
+            justify-content: space-between; /* Adjust as needed */
+            align-items: center; /* Adjust as needed */
+          }
+        .element {
+        padding: 10px;
+        border: 1px solid #ccc;
+        margin: 5px;
         }
         a {
             color: #61afef;
@@ -53,9 +59,8 @@
         </div>
     </div>
     <!-- Include Chart.js library -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
     <script>
-        // Function to make AJAX request and plot chart
         function fetchDataAndPlotCharts() {
             // Make AJAX request to fetch data for charts
             var xhr = new XMLHttpRequest();
@@ -63,72 +68,165 @@
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     var dataList = JSON.parse(xhr.responseText);
-                    dataList.forEach(function(plotInfo, index) {
-                        // Dynamically add canvas element
-                        var canvasId = "chart" + (index + 1);
-                        var canvasContainer = document.createElement("div");
-                        canvasContainer.className = "col-md-6";
-                        canvasContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
-                        document.getElementById("chartsContainer").appendChild(canvasContainer);
-                        // Plot chart
-                        plotChart(plotInfo, canvasId);
-                    });
-                }
-            };
+                    console.log(dataList)
+                    if (dataList.row == undefined) {
+                        dataList.forEach(function(plotInfo, index) {
+                            // Dynamically add canvas element
+                            var canvasId = "chart" + index;
+                            var canvasContainer = document.createElement("div");
+                            canvasContainer.className = "col-md-6";
+                            canvasContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+                            document.getElementById("chartsContainer").appendChild(canvasContainer);
+                            // Plot chart
+                            plotChart(plotInfo, canvasId);
+                        });
+                    } else {
+                        addDataPanel(dataList);
+                        dataList.row.forEach(function(plotInfo, index) {
+                            // Dynamically add canvas element
+                            var canvasId = "chart" + index;
+                            var canvasContainer = document.createElement("div");
+                            canvasContainer.className = "col-md-6";
+                            canvasContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+                            document.getElementById("chartsContainer").appendChild(canvasContainer);
+                            // Plot chart
+                            plotChart(plotInfo, canvasId);
+                        });
+                    }
+                };
+            }
             xhr.send();
         }
-    
         // Function to plot chart using Chart.js
         function plotChart(plotInfo, canvasId) {
             var ctx = document.getElementById(canvasId).getContext('2d');
-
-            var newChart = new Chart(ctx, {
-                type: 'line',
-                data: plotInfo,
-                options: {
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: plotInfo.xAxisName || 't',
-                                color: plotInfo.xAxisNameColor,
-                                font: {
-                                    size: plotInfo.xAxisNameFontSize
+            if (plotInfo.type == 'line') {
+                var newChart = new Chart(ctx, {
+                    type: 'line',
+                    data: plotInfo,
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: plotInfo.xAxisName || 't',
+                                    color: plotInfo.xAxisNameColor,
+                                    font: {
+                                        size: plotInfo.xAxisNameFontSize
+                                    }
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: plotInfo.yAxisName || '',
+                                    color: plotInfo.yAxisNameColor,
+                                    font: {
+                                        size: plotInfo.yAxisNameFontSize
+                                    }
                                 }
                             }
                         },
-                        y: {
+                        interaction: {
+                            mode: plotInfo.interactionMode || 'index',
+                            intersect: plotInfo.intersectInteraction || false
+                        },
+                        plugins: {
                             title: {
                                 display: true,
-                                text: plotInfo.yAxisName || '',
-                                color: plotInfo.yAxisNameColor,
+                                text: plotInfo.title || '',
+                                color: plotInfo.titleColor,
                                 font: {
-                                    size: plotInfo.yAxisNameFontSize
+                                    size: plotInfo.titleFontSize
                                 }
                             }
                         }
-                    },
-                    interaction: {
-                        mode: plotInfo.interactionMode || 'index',
-                        intersect: plotInfo.intersectInteraction || false
-                    },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: plotInfo.title || '',
-                            color: plotInfo.titleColor,
-                            font: {
-                                size: plotInfo.titleFontSize
+                    }
+                });
+            } else if (plotInfo.type == 'bar') {
+                var newChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: plotInfo,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: plotInfo.title || '',
+                                color: plotInfo.titleColor,
+                                font: {
+                                    size: plotInfo.titleFontSize
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            } else if (plotInfo.type == 'pie' || plotInfo.type == 'doughnut') {
+                var newChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: plotInfo,
+                    options: {
+                        responsive: true,
+                        cutout: plotInfo.cutoutPercentage || "0%",
+                        rotation: plotInfo.rotation || 0,
+                        circumference: plotInfo.circumferencePercentage || 360,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: plotInfo.title || '',
+                                color: plotInfo.titleColor,
+                                font: {
+                                    size: plotInfo.titleFontSize
+                                }
+                            }
+                        }
+                    }
+                });
+            } else if (plotInfo.type == 'polarArea') {
+                var newChart = new Chart(ctx, {
+                    type: 'polarArea',
+                    data: plotInfo,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: plotInfo.title || '',
+                                color: plotInfo.titleColor,
+                                font: {
+                                    size: plotInfo.titleFontSize
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         }
-        // Call the function to fetch data and plot charts on page load
-        window.onload = function () {
+        function addDataPanel(plotInfo) {
+            var divContainer = document.createElement("div");
+            divContainer.className = "horizontal-row";
+            divContainer.innerHTML = `<div id="percentageChart" class="col-md-6" style="height: 500px; width: 100%">
+                <canvas id="percentageChartCanvas" width="215" height="500"></canvas></div>
+                <div id="infoTable" class="row"></div>`;
+            document.getElementById("chartsContainer").appendChild(divContainer);
+            var canvasId = "percentageChartCanvas";
+            var ctx = document.getElementById(canvasId).getContext('2d');
+            var newChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: plotInfo.percentageAvailableChart,
+                options: {
+                    responsive: false,
+                    cutout: plotInfo.percentageAvailableChart.cutoutPercentage || "16%",
+                    rotation: plotInfo.percentageAvailableChart.rotation || 360,
+                    circumference: plotInfo.percentageAvailableChart.circumferencePercentage || 180,
+                }
+            })
+        }
+        // Call the function to fetch data and plot charts after page load
+        window.addEventListener('load', function() {
             fetchDataAndPlotCharts();
-        };
-    </script>    
+        });        
+    </script>  
 </body>
 </html>

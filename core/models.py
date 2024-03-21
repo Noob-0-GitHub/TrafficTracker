@@ -284,6 +284,10 @@ class GranDataPoint:
     def total_traffic(self):
         return self.upload + self.download
 
+    @property
+    def total(self):
+        return int(self.get_attr_weight_average('total'))
+
 
 class GranDataList(list):
     def __init__(self, items: Iterable[GranDataPoint | TrafficDataPoint],
