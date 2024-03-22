@@ -12,17 +12,37 @@ with open(default_settings_path, 'r') as f:
 proxies = default_settings['proxies']
 headers = default_settings['headers']
 
-print_out_response_headers = True
-print_out_response_body = True
+print_out_response_headers = default_settings.get('print-out-response-headers', True)
+print_out_response_body = default_settings.get('print-out-response-body', True)
 
 vault_path = os.path.abspath(os.path.join("..", "config", "vault.json"))
 with open(vault_path, 'r') as f:
     vault: dict = json.load(f)
 
 
-def collect():
+def reload_settings():
+    os.chdir(os.path.dirname(__file__))
+
+    with open(default_settings_path, 'r') as _f:
+        global default_settings
+        default_settings = json.load(_f)
+    global proxies
+    proxies = default_settings['proxies']
+    global headers
+    headers = default_settings['headers']
+    global print_out_response_headers
+    print_out_response_headers = default_settings.get('print-out-response-headers', True)
+    global print_out_response_body
+    print_out_response_body = default_settings.get('print-out-response-body', True)
+
+    global vault
+    with open(vault_path, 'r') as _f:
+        vault = json.load(_f)
+
+
+def collect(progress_wrapper=lambda _obj: _obj):
     groups_data = dict()
-    for group in vault.get('groups'):
+    for group in progress_wrapper(vault.get('groups')):
         save_headers = group.get('save-headers')
         save_body = group.get('save-body')
         for url in group.get('urls-with-token'):

@@ -272,7 +272,6 @@ def track_group(group_name) -> OrderedDict[str, str]:
         traffic_to_gb(week_traffic_predicted_by_month)
     track_data['Traffic will be used by the end of the week predicted by the current week data'] = \
         traffic_to_gb(week_traffic_predicted)
-    # todo: plot
 
     return track_data
 
@@ -801,7 +800,7 @@ class EditGroupShell(cmd.Cmd):
                 elif _r.lower() == "none":
                     _r = None
                 self.group[key] = _r
-            print(f"{key} = {value}")
+            print(f"{key} = {self.group[key]}")
             console0.print("---")
 
     def add_url(self, url):
@@ -883,6 +882,15 @@ class EditGroupShell(cmd.Cmd):
     def do_url(self, arg):
         """shortcut for urls"""
         self.do_urls(arg)
+
+    def do_raw(self, _):
+        """show raw data"""
+        try:
+            console0.print(parse_data(f"{self.group.get('name')}.json"), no_wrap=True)
+        except FileNotFoundError:
+            console0.print(f"{self.group.get('name')}.json not found.Please check if it is collected", no_wrap=True)
+        except json.decoder.JSONDecodeError:
+            console0.print(f"The data in {self.group.get('name')}.json is invalid", no_wrap=True)
 
 
 if __name__ == '__main__':
