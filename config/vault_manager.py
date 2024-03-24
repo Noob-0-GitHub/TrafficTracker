@@ -7,7 +7,7 @@ from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
 
-from rich import console, table, markdown
+from rich import console, table, markdown, panel
 from rich import traceback as rich_traceback
 
 os.chdir(os.path.dirname(__file__))
@@ -18,7 +18,7 @@ precision = 5
 gmt_tz = 0
 
 console0 = console.Console(record=True, style=f"on #{'282c34'}")  # atom one dark theme
-rich_traceback.install(console=console0, extra_lines=8, show_locals=True, theme="one-dark")
+rich_traceback.install(console=console0, width=console0.width, extra_lines=8, show_locals=True, theme="one-dark")
 
 
 def parse_json(file_path):
@@ -539,6 +539,8 @@ class MainShell(cmd.Cmd):
         if _r.lower() == "n":
             return
 
+        original_len = len(parse_data(group_name + ".json"))
+
         # merge
         datafiles.insert(0, os.path.join(data_folder_path, group_name + ".json"))
         points = list()
@@ -562,8 +564,13 @@ class MainShell(cmd.Cmd):
                            f"{successful_points} points added", no_wrap=True)
         points.sort(key=lambda x: datetime.strptime(x['date'], "%Y-%m-%d %H:%M:%S").timestamp())
 
-        # noinspection PyTypeChecker
+        console0.print(points, no_wrap=True)
+        console0.print(f"{len(points) - original_len} points add", no_wrap=True)
+        _r = console_input("save? (Y/n)")
+        if _r.lower() == "n":
+            return
         save_data(group_name + ".json", points)
+        console0.print(f"Saved {group_name}.json successfully", no_wrap=True)
 
     def do_data(self, group_name):
         """show group data using table of rich"""
@@ -746,10 +753,14 @@ class MainShell(cmd.Cmd):
                            no_wrap=True)
             return
         max_key_len = max(len(k) for k in track_data.keys() if len(k) <= 30)
-        console0.print(markdown.Markdown(f"# Group {group.get('name')} track info"))
+        # console0.print(markdown.Markdown(f"# Group {group.get('name')} track info"))
+        track_output: str = ""
         for k, v in track_data.items():
-            console0.print(f"[magenta]{k.ljust(max_key_len)}[/] = [cyan]{v}[/]"
-                           if len(k) <= 30 else f"[magenta]{k}[/] =\n [cyan]{v}[/]", no_wrap=True)
+            track_output += (f"[magenta]{k.ljust(max_key_len)}[/] = [cyan]{v}[/]"
+                             if len(k) <= 30 else f"[magenta]{k}[/] =\n [cyan]{v}[/]")
+            track_output += "\n"
+
+        console0.print(panel.Panel.fit(track_output, title=f"# Group {group.get('name')} track info"), no_wrap=True)
 
 
 class EditGroupShell(cmd.Cmd):
@@ -771,8 +782,12 @@ class EditGroupShell(cmd.Cmd):
 
     def do_list(self, _):
         """list all configs"""
+        list_output = ""
         for key in self.group:
-            console0.print(f"{key}: {json.dumps(self.group.get(key), indent=self.intend)}", no_wrap=True)
+            list_output += f"{key}: {json.dumps(self.group.get(key), indent=self.intend)}"
+            list_output += "\n"
+
+        console0.print(panel.Panel(list_output), no_wrap=True)
 
     def do_name(self, new_name):
         """set group name"""
@@ -891,6 +906,26 @@ class EditGroupShell(cmd.Cmd):
             console0.print(f"{self.group.get('name')}.json not found.Please check if it is collected", no_wrap=True)
         except json.decoder.JSONDecodeError:
             console0.print(f"The data in {self.group.get('name')}.json is invalid", no_wrap=True)
+
+    def do_rmd(self, _):
+        """remove duplication points in raw data"""
+        data = parse_data(f"{self.group.get('name')}.json")
+        recorded_date = set()
+        new_data = []
+        for point in data:
+            if point.get('date') not in recorded_date:
+                new_data.append(point)
+                recorded_date.add(point.get('date'))
+                console0.print("Removed point:", point, no_wrap=True)
+
+        console0.print(json.dumps(new_data, indent=self.intend), no_wrap=True)
+        console0.print(f"{len(data)} data points -> {len(new_data)} data points, "
+                       f"removed {len(data) - len(new_data)} duplicates", no_wrap=True)
+        _r = console_input("Sure to save? (Y/n)")
+        if _r.lower() == "n":
+            return
+        save_data(f"{self.group.get('name')}.json", new_data)
+        console0.print(f"Saved {self.group.get('name')}.json successfully", no_wrap=True)
 
 
 if __name__ == '__main__':

@@ -1,12 +1,14 @@
 import json
 import os
 import warnings
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Iterable
 
 data_folder_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+allow_negative_traffic = False
 
 
 def parse_json(file_path):
@@ -73,7 +75,7 @@ def save_data(file_name, data):
 """
 
 
-class BaseDataPoint(metaclass=ABCMeta):
+class BaseDataPoint(ABC):
     @property
     @abstractmethod
     def url(self):
@@ -131,16 +133,16 @@ class BaseDataPoint(metaclass=ABCMeta):
 
 @dataclass
 class TrafficDataPoint(BaseDataPoint):
-    url: str
-    date: datetime
-    date_in_str: str
-    date_in_ts: float
-    upload: int
-    download: int
-    total_traffic: int
-    total: int
-    expire: datetime
-    expire_in_ts: int
+    url: str = None
+    date: datetime = None
+    date_in_str: str = None
+    date_in_ts: float = None
+    upload: int = None
+    download: int = None
+    total_traffic: int = None
+    total: int = None
+    expire: datetime = None
+    expire_in_ts: int = None
 
     def __init__(self, data_point: dict = None):
         if data_point is None:
@@ -181,7 +183,7 @@ class TrafficDataPoint(BaseDataPoint):
 class GranDataPoint(BaseDataPoint):
     pre_point: TrafficDataPoint
     next_point: TrafficDataPoint
-    date_in_ts: float
+    date_in_ts: float = None
 
     @property
     def date(self) -> datetime:
@@ -242,7 +244,7 @@ class GranDataPoint(BaseDataPoint):
         return f"GranDataPoint({self.date_in_str}, {self.pre_point.__repr__()}, {self.next_point.__repr__()})"
 
 
-class BaseDataList(list, metaclass=ABCMeta):
+class BaseDataList(list, ABC):
     @abstractmethod
     def get_upload(self):
         pass
@@ -328,7 +330,8 @@ class TrafficDataList(BaseDataList):
             if pre_total is None:
                 result.append(0)
             else:
-                result.append(point_total - pre_total)
+                result.append((point_total - pre_total)
+                              if allow_negative_traffic or point_total > pre_total else 0)
             pre_total = point_total
         return result
 
@@ -340,7 +343,8 @@ class TrafficDataList(BaseDataList):
             if pre_total is None:
                 result.append(0)
             else:
-                result.append(point_total - pre_total)
+                result.append((point_total - pre_total)
+                              if allow_negative_traffic or point_total > pre_total else 0)
             pre_total = point_total
         return result
 
@@ -352,7 +356,8 @@ class TrafficDataList(BaseDataList):
             if pre_total is None:
                 result.append(0)
             else:
-                result.append(point_total - pre_total)
+                result.append((point_total - pre_total)
+                              if allow_negative_traffic or point_total > pre_total else 0)
             pre_total = point_total
         return result
 
@@ -497,7 +502,8 @@ class GranDataList(list):
         result = []
         for point in self:
             point_upload = point.upload
-            result.append(point_upload - pre_point_upload)
+            result.append((point_upload - pre_point_upload)
+                          if allow_negative_traffic or point_upload > pre_point_upload else 0)
             pre_point_upload = point_upload
         return result
 
@@ -508,7 +514,8 @@ class GranDataList(list):
         result = []
         for point in self:
             point_download = point.download
-            result.append(point_download - pre_point_download)
+            result.append((point_download - pre_point_download)
+                          if allow_negative_traffic or point_download > pre_point_download else 0)
             pre_point_download = point_download
         return result
 
@@ -519,7 +526,8 @@ class GranDataList(list):
         result = []
         for point in self:
             point_total = point.total_traffic
-            result.append(point_total - pre_point_total)
+            result.append((point_total - pre_point_total)
+                          if allow_negative_traffic or point_total > pre_point_total else 0)
             pre_point_total = point_total
         return result
 
@@ -591,88 +599,115 @@ class GranDataList(list):
         return self.get_data_by_date_range(start_date=start_of_latest_24hours, end_date=datetime.now())
 
 
-def list_to_mb(data: list[float | int]):
+def traffic_to_gb_in_str(traffic, _prec=3) -> str:
+    """
+    Convert traffic from bytes to gigabytes and return the result as a string.
+    """
+    if not isinstance(_prec, int) or _prec < 0:
+        _prec = 3
+    return f"{traffic / 1024 / 1024 / 1024} GB"
+
+
+def traffic_to_mb_in_str(traffic, _prec=3) -> str:
+    """
+    Converts the given traffic value in bytes to megabytes.
+    """
+    if not isinstance(_prec, int) or _prec < 0:
+        _prec = 3
+    return f"{traffic / 1024 / 1024} MB"
+
+
+def list_to_mb_in_float(data: list[float | int]):
     return [item / 1024 / 1024 for item in data]
 
 
-def list_to_gb(data: list[float | int]):
+def list_to_gb_in_float(data: list[float | int]):
     return [item / 1024 / 1024 / 1024 for item in data]
 
 
-# def track_group(data: (TrafficDataList | GranDataList)) -> dict[str, str]:
-#     """return a dict of information"""
-#     # todo: adjust data
-#     # data = data.get_data_by_gran(granularity_sec=60*60)
-#
-#     # disposal data
-#     latest_point = data[-1]
-#     latest_date = datetime.strptime(latest_point.get('date'), "%Y-%m-%d %H:%M:%S")
-#
-#     traffic_limit = latest_point.get('total')
-#     expire_in_ts = latest_point.get('expire')
-#     expire = datetime.fromtimestamp(expire_in_ts)
-#
-#     total_upload = latest_point.get('upload')
-#     total_download = latest_point.get('download')
-#     total_traffic = total_upload + total_download
-#     available_traffic = traffic_limit - total_traffic
-#     used_percent = total_traffic / traffic_limit
-#     available_percent = available_traffic / traffic_limit
-#
-#     # month additional traffic is equal to the total traffic
-#     month_speed_of_day = total_traffic / latest_date.day
-#     month_traffic_predicted = month_speed_of_day * (
-#             start_of_month.replace(month=start_of_month.month + 1) - start_of_month).days
-#
-#     start_of_week = (latest_date - timedelta(days=7)) if latest_date.day > 7 else start_of_month
-#     week_earliest_point = [point for point in data
-#                            if datetime.strptime(point.get('date'), "%Y-%m-%d %H:%M:%S") >= start_of_week][0]
-#     week_additional_upload_traffic = latest_point.get('upload') - week_earliest_point.get('upload')
-#     week_additional_download_traffic = latest_point.get('download') - week_earliest_point.get('download')
-#     week_additional_traffic = week_additional_upload_traffic + week_additional_download_traffic
-#     # todo: week prediction is incorrect
-#     week_speed_of_day = week_additional_traffic / (latest_date - start_of_week).days
-#     week_traffic_predicted = (week_speed_of_day * 7 +
-#                               week_earliest_point.get('upload') + week_earliest_point.get('download'))
-#
-#     # todo:week prediction is incorrect
-#     week_traffic_predicted_by_month = total_traffic + month_speed_of_day * (latest_date - start_of_month).days
-#     month_traffic_predicted_by_week = total_traffic + week_speed_of_day * (start_of_month.replace(
-#         month=start_of_month.month + 1) - latest_date).days
-#
-#     # abandon to statistics by day because of prediction inaccuracy
-#     # start_of_day = latest_date.replace(hour=0, minute=0, second=0, microsecond=0)
-#     # day_earliest_point = [point for point in data
-#     #                       if datetime.strptime(point.get('date'), "%Y-%m-%d %H:%M:%S") >= start_of_day][0]
-#     # day_additional_upload_traffic = latest_point.get('upload') - day_earliest_point.get('upload')
-#     # day_additional_download_traffic = latest_point.get('download') - day_earliest_point.get('download')
-#     # day_additional_traffic = day_additional_upload_traffic + day_additional_download_traffic
-#     # day_speed = day_additional_traffic / (latest_date - start_of_day).days
-#
-#     track_data: dict[str, str] = dict()
-#     track_data['Expiration time'] = expire.strftime("%Y-%m-%d %H:%M:%S")
-#     track_data['Traffic limitation'] = traffic_limit
-#     track_data['Upload traffic used'] = total_upload
-#     track_data['Download traffic used'] = total_download
-#     track_data['Total traffic used'] = total_traffic
-#     track_data['Upload in latest 7days'] = week_additional_upload_traffic
-#     track_data['Download in latest 7days'] = week_additional_download_traffic
-#     track_data['Total in latest 7days'] = week_additional_traffic
-#     track_data['Current available traffic'] = available_traffic
-#     track_data['Used percentage'] = used_percent
-#     track_data['Available percentage'] = available_percent
-#     track_data['Average speed of day in month'] = f"{month_speed_of_day.rstrip()}/day"
-#     track_data['Average speed of day in 7days'] = f"{week_speed_of_day.rstrip()}/day"
-#     track_data['Traffic will be used by the end of the month predicted by the current month data'] = \
-#         month_traffic_predicted
-#     track_data['Traffic will be used by the end of the month predicted by the current week data'] = \
-#         month_traffic_predicted_by_week
-#     track_data['Traffic will be used by the end of the week predicted by the current month data'] = \
-#         week_traffic_predicted_by_month
-#     track_data['Traffic will be used by the end of the week predicted by the current week data'] = \
-#         week_traffic_predicted
-#
-#     return track_data
+def track_group(data: (TrafficDataList[TrafficDataPoint], GranDataList[TrafficDataPoint, GranDataPoint]),
+                _prec=3) -> OrderedDict[str, str]:
+    """return a dict of information by the group name"""
+    # collect data by time
+    start_of_month = data[-1].date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if isinstance(data, TrafficDataList):
+        data = data.latest_month_data().get_data_by_gran(granularity_sec=60 * 60)
+    elif isinstance(data, GranDataList):
+        data = data.latest_month_data()
+    if len(data) <= 0:
+        raise ValueError(f"No sufficient data in the time interval")
+
+    # disposal data
+    latest_point: BaseDataPoint = data[-1]
+    latest_date = latest_point.date
+
+    traffic_limit = latest_point.total
+    expire = latest_point.expire
+
+    total_upload = latest_point.upload
+    total_download = latest_point.download
+    total_traffic = latest_point.total_traffic
+    available_traffic = traffic_limit - total_traffic
+    used_percent = total_traffic / traffic_limit
+    available_percent = available_traffic / traffic_limit
+
+    # month additional traffic is equal to the total traffic
+    month_speed_of_day = total_traffic / latest_date.day
+    month_traffic_predicted = month_speed_of_day * (
+            start_of_month.replace(month=start_of_month.month + 1) - start_of_month).days
+
+    _7days_earliest_point: BaseDataPoint = data.latest_7days_data()[0]
+    start_of_7days = _7days_earliest_point.date
+    _7days_additional_upload_traffic = total_upload - _7days_earliest_point.upload
+    _7days_additional_download_traffic = total_download - _7days_earliest_point.download
+    _7days_additional_traffic = _7days_additional_upload_traffic + _7days_additional_download_traffic
+    # todo: week prediction is incorrect
+    _7days_speed_of_day = _7days_additional_traffic / (latest_date - start_of_7days).days
+    _7days_traffic_predicted = (_7days_speed_of_day * 7 +
+                                _7days_earliest_point.upload + _7days_earliest_point.download)
+
+    # todo:week prediction is incorrect
+    _7days_traffic_predicted_by_month = total_traffic + month_speed_of_day * (latest_date - start_of_month).days
+    month_traffic_predicted_by_7days = total_traffic + _7days_speed_of_day * (start_of_month.replace(
+        month=start_of_month.month + 1) - latest_date).days
+
+    # abandon to statistics by day because of prediction inaccuracy
+    # start_of_day = latest_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    # day_earliest_point = [point for point in data
+    #                       if datetime.strptime(point.get('date'), "%Y-%m-%d %H:%M:%S") >= start_of_day][0]
+    # day_additional_upload_traffic = latest_point.upload - day_earliest_point.upload
+    # day_additional_download_traffic = latest_point.download - day_earliest_point.download
+    # day_additional_traffic = day_additional_upload_traffic + day_additional_download_traffic
+    # day_speed = day_additional_traffic / (latest_date - start_of_day).days
+
+    track_data: OrderedDict[str, str] = OrderedDict()
+    track_data['Expiration time'] = expire.strftime("%Y-%m-%d %H:%M:%S")
+    track_data['Traffic limitation'] = traffic_to_gb_in_str(traffic_limit, _prec=_prec)
+    track_data['Upload traffic used'] = traffic_to_gb_in_str(total_upload, _prec=_prec)
+    track_data['Download traffic used'] = traffic_to_gb_in_str(total_download, _prec=_prec)
+    track_data['Total traffic used'] = traffic_to_gb_in_str(total_traffic, _prec=_prec)
+    track_data['Upload in latest 7days'] = traffic_to_gb_in_str(_7days_additional_upload_traffic, _prec=_prec)
+    track_data['Download in latest 7days'] = traffic_to_gb_in_str(_7days_additional_download_traffic, _prec=_prec)
+    track_data['Total in latest 7days'] = traffic_to_gb_in_str(_7days_additional_traffic, _prec=_prec)
+    track_data['Current available traffic'] = traffic_to_gb_in_str(available_traffic, _prec=_prec)
+    track_data['Used percentage'] = f"{used_percent * 100:.{_prec}f}%" \
+        if _prec >= 0 else f"{used_percent * 100}%"
+    track_data['Available percentage'] = f"{available_percent * 100:.{_prec}f}%" \
+        if _prec >= 0 else f"{available_percent * 100}%"
+    track_data[
+        'Average speed of day in month'] = f"{traffic_to_gb_in_str(month_speed_of_day, _prec=_prec).rstrip()}/day"
+    track_data[
+        'Average speed of day in 7days'] = f"{traffic_to_gb_in_str(_7days_speed_of_day, _prec=_prec).rstrip()}/day"
+    track_data['Traffic will be used by the end of the month predicted by the latest month data'] = \
+        traffic_to_gb_in_str(month_traffic_predicted, _prec=_prec)
+    track_data['Traffic will be used by the end of the month predicted by the latest 7 days data'] = \
+        traffic_to_gb_in_str(month_traffic_predicted_by_7days, _prec=_prec)
+    track_data['Traffic will be used by the end of the week predicted by the latest month data'] = \
+        traffic_to_gb_in_str(_7days_traffic_predicted_by_month, _prec=_prec)
+    track_data['Traffic will be used by the end of the week predicted by the latest 7 days data'] = \
+        traffic_to_gb_in_str(_7days_traffic_predicted, _prec=_prec)
+
+    return track_data
 
 
 def _test():
@@ -680,7 +715,7 @@ def _test():
     from main import parse_data
 
     data = parse_data([json_file for json_file in os.listdir(data_folder_path) if json_file.endswith('.json')][0])
-    print(data)
+    # print(data)
 
     print("Get all data into data list:")
     data_list = TrafficDataList.from_list(data)

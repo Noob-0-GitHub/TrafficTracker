@@ -4,7 +4,8 @@ from dataclasses import asdict
 from flask import Flask, jsonify, render_template, redirect, url_for
 
 import plot
-from models import parse_data, data_folder_path, TrafficDataList, list_to_mb, list_to_gb, GranDataList
+from models import parse_data, data_folder_path, TrafficDataList, list_to_mb_in_float, list_to_gb_in_float, \
+    GranDataList, track_group
 
 app = Flask(__name__)
 
@@ -23,44 +24,51 @@ def get_data():
     _plot.add_line_plot(title="Traffic", x_axis_name="Date", y_axis_name="Traffic(GB)",
                         labels=month_traffic_data.get_date_in_str(),
                         lines=[
-                            plot.ChartJS.Line(name="upload", data=list_to_gb(month_traffic_data.get_upload()),
+                            plot.ChartJS.Line(name="upload", data=list_to_gb_in_float(month_traffic_data.get_upload()),
                                               border_color="lightgreen", background_color="#282C34"),
-                            plot.ChartJS.Line(name="download", data=list_to_gb(month_traffic_data.get_download()),
+                            plot.ChartJS.Line(name="download",
+                                              data=list_to_gb_in_float(month_traffic_data.get_download()),
                                               border_color="cyan", background_color="#282C34"),
-                            plot.ChartJS.Line(name="total", data=list_to_gb(month_traffic_data.get_total_traffic()),
+                            plot.ChartJS.Line(name="total",
+                                              data=list_to_gb_in_float(month_traffic_data.get_total_traffic()),
                                               border_color="coral", background_color="#282C34")
                         ])
     _plot.add_line_plot(title="Traffic Speed", x_axis_name="Date", y_axis_name="Traffic(MB/s)",
                         labels=month_traffic_data.get_date_in_str(),
                         lines=[
-                            plot.ChartJS.Line(name="upload", data=list_to_mb(month_traffic_data.get_upload_rate_sec()),
+                            plot.ChartJS.Line(name="upload",
+                                              data=list_to_mb_in_float(month_traffic_data.get_upload_rate_sec()),
                                               border_color="lightgreen", background_color="#282C34"),
                             plot.ChartJS.Line(name="download",
-                                              data=list_to_mb(month_traffic_data.get_download_rate_sec()),
+                                              data=list_to_mb_in_float(month_traffic_data.get_download_rate_sec()),
                                               border_color="cyan", background_color="#282C34"),
-                            plot.ChartJS.Line(name="total", data=list_to_mb(month_traffic_data.get_rate_sec()),
+                            plot.ChartJS.Line(name="total", data=list_to_mb_in_float(month_traffic_data.get_rate_sec()),
                                               border_color="coral", background_color="#282C34"),
                         ])
     _7days_traffic_data: GranDataList = raw_traffic_data.latest_7days_data().get_data_by_gran(granularity_sec=60 * 60)
     _plot.add_line_plot(title="Traffic in latest 7 days", x_axis_name="Date", y_axis_name="Traffic(GB)",
                         labels=_7days_traffic_data.get_date_in_str(),
                         lines=[
-                            plot.ChartJS.Line(name="upload", data=list_to_gb(_7days_traffic_data.get_upload()),
+                            plot.ChartJS.Line(name="upload", data=list_to_gb_in_float(_7days_traffic_data.get_upload()),
                                               border_color="lightgreen", background_color="#282C34"),
-                            plot.ChartJS.Line(name="download", data=list_to_gb(_7days_traffic_data.get_download()),
+                            plot.ChartJS.Line(name="download",
+                                              data=list_to_gb_in_float(_7days_traffic_data.get_download()),
                                               border_color="cyan", background_color="#282C34"),
-                            plot.ChartJS.Line(name="total", data=list_to_gb(_7days_traffic_data.get_total_traffic()),
+                            plot.ChartJS.Line(name="total",
+                                              data=list_to_gb_in_float(_7days_traffic_data.get_total_traffic()),
                                               border_color="coral", background_color="#282C34"),
                         ])
     _plot.add_line_plot(title="Traffic Speed in latest 7 days", x_axis_name="Date", y_axis_name="Traffic(MB/s)",
                         labels=_7days_traffic_data.get_date_in_str(),
                         lines=[
-                            plot.ChartJS.Line(name="upload", data=list_to_mb(_7days_traffic_data.get_upload_rate_sec()),
+                            plot.ChartJS.Line(name="upload",
+                                              data=list_to_mb_in_float(_7days_traffic_data.get_upload_rate_sec()),
                                               border_color="lightgreen", background_color="#282C34"),
                             plot.ChartJS.Line(name="download",
-                                              data=list_to_mb(_7days_traffic_data.get_download_rate_sec()),
+                                              data=list_to_mb_in_float(_7days_traffic_data.get_download_rate_sec()),
                                               border_color="cyan", background_color="#282C34"),
-                            plot.ChartJS.Line(name="total", data=list_to_mb(_7days_traffic_data.get_rate_sec()),
+                            plot.ChartJS.Line(name="total",
+                                              data=list_to_mb_in_float(_7days_traffic_data.get_rate_sec()),
                                               border_color="coral", background_color="#282C34"),
                         ])
     _24hours_traffic_data: GranDataList = raw_traffic_data.latest_24hours_data().get_data_by_gran(
@@ -68,23 +76,27 @@ def get_data():
     _plot.add_line_plot(title="Traffic in latest 24 hours", x_axis_name="Date", y_axis_name="Traffic(GB)",
                         labels=_24hours_traffic_data.get_date_in_str(),
                         lines=[
-                            plot.ChartJS.Line(name="upload", data=list_to_gb(_24hours_traffic_data.get_upload()),
+                            plot.ChartJS.Line(name="upload",
+                                              data=list_to_gb_in_float(_24hours_traffic_data.get_upload()),
                                               border_color="lightgreen", background_color="#282C34"),
-                            plot.ChartJS.Line(name="download", data=list_to_gb(_24hours_traffic_data.get_download()),
+                            plot.ChartJS.Line(name="download",
+                                              data=list_to_gb_in_float(_24hours_traffic_data.get_download()),
                                               border_color="cyan", background_color="#282C34"),
-                            plot.ChartJS.Line(name="total", data=list_to_gb(_24hours_traffic_data.get_total_traffic()),
+                            plot.ChartJS.Line(name="total",
+                                              data=list_to_gb_in_float(_24hours_traffic_data.get_total_traffic()),
                                               border_color="coral", background_color="#282C34"),
                         ])
     _plot.add_line_plot(title="Traffic Speed in latest 24 hours", x_axis_name="Date", y_axis_name="Traffic(MB/s)",
                         labels=_24hours_traffic_data.get_date_in_str(),
                         lines=[
                             plot.ChartJS.Line(name="upload",
-                                              data=list_to_mb(_24hours_traffic_data.get_upload_rate_sec()),
+                                              data=list_to_mb_in_float(_24hours_traffic_data.get_upload_rate_sec()),
                                               border_color="lightgreen", background_color="#282C34"),
                             plot.ChartJS.Line(name="download",
-                                              data=list_to_mb(_24hours_traffic_data.get_download_rate_sec()),
+                                              data=list_to_mb_in_float(_24hours_traffic_data.get_download_rate_sec()),
                                               border_color="cyan", background_color="#282C34"),
-                            plot.ChartJS.Line(name="total", data=list_to_mb(_24hours_traffic_data.get_rate_sec()),
+                            plot.ChartJS.Line(name="total",
+                                              data=list_to_mb_in_float(_24hours_traffic_data.get_rate_sec()),
                                               border_color="coral", background_color="#282C34"),
                         ])
     # _plot.add_pie_plot(title="Traffic(GB)", cutout_percentage="20%",
@@ -105,7 +117,8 @@ def get_data():
     #     ])
 
     percentage_available_chart = plot.ChartJS.PiePlot(
-        title="Available Traffic", labels=["Upload", "Download", "Available"], cutoutPercentage="18%", datasets=[
+        title="Available Traffic", labels=["Total upload(GB)", "Total download(GB)", "Available(GB)"],
+        cutoutPercentage="18%", datasets=[
             plot.ChartJS.Pie(name="Traffic(GB)", background_colors=["#84a729", "#004c6d", "coral"], data=[
                 month_traffic_data.get_upload()[-1] / 1024 / 1024 / 1024,
                 month_traffic_data.get_download()[-1] / 1024 / 1024 / 1024,
@@ -121,8 +134,10 @@ def get_data():
             ], ),
         ]
     )
+    data_panel_info_table = [{"name": _k, "value": _v} for _k, _v in track_group(month_traffic_data).items()]
     # _response = jsonify(_plot.asdict())
-    _response = jsonify(dict(row=_plot.asdict(), percentageAvailableChart=asdict(percentage_available_chart)))
+    _response = jsonify(dict(row=_plot.asdict(), percentageAvailableChart=asdict(percentage_available_chart),
+                             infoTable=data_panel_info_table))
     return _response
 
 
