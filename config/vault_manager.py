@@ -190,11 +190,12 @@ def update_vault(vault_data, _path: str = None):
 
 def track_group(group_name) -> OrderedDict[str, str]:
     """return a dict of information by the group name"""
+
     with open(os.path.join(data_folder_path, f"{group_name}.json"), 'r') as f:
         _raw_data: list[dict] = json.load(f)
     assert isinstance(_raw_data, list)
 
-    # collect data by time
+    # collect_all data by time
     start_of_month = datetime.strptime(_raw_data[-1].get('date'), "%Y-%m-%d %H:%M:%S").replace(
         day=1, hour=0, minute=0, second=0, microsecond=0)
     data = [point for point in _raw_data if
@@ -421,7 +422,9 @@ class MainShell(cmd.Cmd):
         group_name = group_name.lower()
         groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
         group = groups.get(group_name)
+        group_name = group.get("name")
         if group is None:
+
             if not len(group_name):
                 print('Usage: config [group name]')
             else:
@@ -494,7 +497,9 @@ class MainShell(cmd.Cmd):
         group_name = group_name.lower()
         groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
         group = groups.get(group_name)
+        group_name = group.get("name")
         if group is None:
+
             if not len(group_name):
                 print('Usage: del [group name]')
             else:
@@ -510,7 +515,9 @@ class MainShell(cmd.Cmd):
         group_name = group_name.lower()
         groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
         group = groups.get(group_name)
+        group_name = group.get("name")
         if group is None:
+
             if not len(group_name):
                 print('Usage: merge | merge [group name]')
             else:
@@ -577,7 +584,9 @@ class MainShell(cmd.Cmd):
         group_name = group_name.lower()
         groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
         group = groups.get(group_name)
+        group_name = group.get("name")
         if group is None:
+
             if not len(group_name):
                 print('Usage: data [group name]')
             else:
@@ -647,6 +656,7 @@ class MainShell(cmd.Cmd):
         group_name = group_name.lower()
         groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
         group = groups.get(group_name)
+        group_name = group.get("name")
         if group is None:
             if not len(group_name):
                 print('Usage: addl [group name]')
@@ -727,6 +737,7 @@ class MainShell(cmd.Cmd):
         group_name = group_name.lower()
         groups = {_g.get('name').lower(): _g for _g in self.vault.get('groups')}
         group = groups.get(group_name)
+        group_name = group.get("name")
         if group is None:
             if not len(group_name):
                 print('Usage: track [group name]')
