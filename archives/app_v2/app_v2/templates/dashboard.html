@@ -46,7 +46,7 @@
         function fetchDataAndPlotChart() {
             // Make AJAX request to fetch data
             var xhr = new XMLHttpRequest();
-            xhr.open("GET", "/get_data", true);
+            xhr.open("GET", "/dashboard_glance_data_packer", true);
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     var data = JSON.parse(xhr.responseText);

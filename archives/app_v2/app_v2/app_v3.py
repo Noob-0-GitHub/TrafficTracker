@@ -29,7 +29,7 @@ traffic_data = [{
 }]
 
 
-@app.route('/get_data')
+@app.route('/dashboard_glance_data_packer')
 def get_data():
     print(jsonify(traffic_data))
     return jsonify(traffic_data)

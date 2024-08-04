@@ -40,14 +40,30 @@ def reload_settings():
         vault = json.load(_f)
 
 
-def collect(progress_wrapper=lambda _obj: _obj):
+def get_vault_data() -> dict[str, list[dict]]:
+    return vault
+
+
+def get_groups() -> list[dict]:
+    return vault.get('groups')
+
+
+def get_group_names() -> list[str]:
+    return [group.get('name') for group in vault.get('groups')]
+
+
+def get_group(group_name: str) -> dict:
+    return [group for group in vault.get('groups') if group.get('name') == group_name][0]
+
+
+def collect_all(progress_wrapper=lambda _obj: _obj):
     groups_data = dict()
     for group in progress_wrapper(vault.get('groups')):
         save_headers = group.get('save-headers')
         save_body = group.get('save-body')
         for url in group.get('urls-with-token'):
             try:
-                response = subscribe_get(url['url'])
+                response = get_subscribe(url['url'])
             except Exception as e:
                 print(e)
             else:
@@ -68,7 +84,25 @@ def collect(progress_wrapper=lambda _obj: _obj):
     return groups_data
 
 
-def subscribe_get(url):
+def collect_group(group_name):
+    for url in get_group(group_name)['urls-with-token']:
+        try:
+            response = get_subscribe(url['url'])
+        except Exception as e:
+            print(e)
+        else:
+            break
+    else:
+        raise requests.exceptions.RequestException("All urls failed")
+    traffic_data = dict()
+    traffic_data['url'] = response.url
+    traffic_data['date'] = parsedate_to_datetime(response.headers.get('Date')).strftime("%Y-%m-%d %H:%M:%S")
+    subs_info = parse_subscription_userinfo(response.headers)
+    traffic_data.update(subs_info)
+    return traffic_data
+
+
+def get_subscribe(url):
     response = requests.get(url, headers=headers, proxies=proxies)
 
     # if request failed
@@ -112,7 +146,7 @@ def parse_subscription_userinfo(response_headers):
 
 
 def _test():
-    _r = collect()
+    _r = collect_all()
     print(json.dumps(_r, indent=2))
     print(_r)
 

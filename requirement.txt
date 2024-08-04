@@ -3,3 +3,4 @@ schedule
 rich
 alive_progress
 flask
+waitress

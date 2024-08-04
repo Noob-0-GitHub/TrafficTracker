@@ -11,7 +11,7 @@ data_folder_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 allow_negative_traffic = False
 
 
-def parse_json(file_path):
+def parse_json(file_path: str):
     try:
         with open(file_path, 'r') as file:
             json_data = json.load(file)
@@ -24,7 +24,7 @@ def parse_json(file_path):
         return {}
 
 
-def save_json(file_path, data, indent=None):
+def save_json(file_path: str, data, indent=None):
     try:
         with open(file_path, 'w') as file:
             json.dump(data, file, default=handle_non_serializable, indent=indent)
@@ -42,15 +42,26 @@ def handle_non_serializable(obj):
         return "__non_serializable__"
 
 
-def parse_data(file_name):
+def parse_data(file_name: str) -> list[dict[str, object]]:
     file_path = os.path.join(data_folder_path, file_name)
     parsed = parse_json(file_path)
     return parsed if len(parsed) else []
 
 
-def save_data(file_name, data):
+def save_data(file_name: str, data: list[dict[str, object]]):
     file_path = os.path.join(data_folder_path, file_name)
     save_json(file_path, data)
+
+
+def list_data_file_name(keep_extension: bool = True) -> list[str]:
+    return [(file.name if keep_extension else os.path.splitext(file.name)[0])
+            for file in os.scandir(data_folder_path)
+            if file.is_file() and file.name.endswith('.json')]
+
+
+def list_data_file() -> list[os.DirEntry]:
+    return [file for file in os.scandir(data_folder_path)
+            if file.is_file() and file.name.endswith('.json')]
 
 
 # This is a data point sample
@@ -142,9 +153,9 @@ class TrafficDataPoint(BaseDataPoint):
     total_traffic: int = None
     total: int = None
     expire: datetime = None
-    expire_in_ts: int = None
+    expire_in_ts: (int, float) = None
 
-    def __init__(self, data_point: dict = None):
+    def __init__(self, data_point: dict = None, gmt_offset=0):
         if data_point is None:
             data_point = dict()
         self.url = data_point.get("url")
@@ -174,6 +185,21 @@ class TrafficDataPoint(BaseDataPoint):
             self.expire = None
         else:
             self.expire = datetime.fromtimestamp(self.expire_in_ts)
+
+        self.gmt_offset = 0
+        if gmt_offset:
+            self.set_gmt_offset(gmt_offset)
+
+    def set_gmt_offset(self, gmt_offset):
+        if self.date:
+            self.date = self.date + timedelta(hours=gmt_offset - self.gmt_offset)
+            self.date_in_str = self.date.strftime("%Y-%m-%d %H:%M:%S")
+            self.date_in_ts = self.date.timestamp()
+        if self.expire:
+            self.expire = self.expire + timedelta(hours=gmt_offset - self.gmt_offset)
+            self.expire_in_ts = self.expire.timestamp()
+
+        self.gmt_offset = gmt_offset
 
     def __repr__(self):
         return f"TrafficDataPoint({self.date_in_str}, {self.upload}, {self.download}, {self.total})"
@@ -310,8 +336,30 @@ class TrafficDataList(BaseDataList):
             self.extend(data_list)
 
     @classmethod
-    def from_list(cls, data_list: list):
-        return cls(TrafficDataPoint(data_point_dict) for data_point_dict in data_list)
+    def from_list(cls, data_list: list, gmt_offset=0, add_original_point=True):
+        data_points = [TrafficDataPoint(data_point_dict, gmt_offset=gmt_offset) for data_point_dict in data_list]
+        current_month = data_points[0].date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        current_month_ts = current_month.timestamp()
+        if add_original_point and not [data_point for data_point in data_points
+                                       if data_point.date_in_ts == current_month_ts]:
+            """
+            self.url = data_point.get("url")
+            self.date_in_str = data_point.get("date")
+            self.upload = data_point.get("upload")
+            self.download = data_point.get("download")
+            self.total = data_point.get("total")
+            self.expire_in_ts = data_point.get("expire")
+            """
+            original_point = TrafficDataPoint({
+                "url": data_points[0].url,
+                "date": current_month.strftime("%Y-%m-%d %H:%M:%S"),
+                "upload": 0,
+                "download": 0,
+                "total": data_points[0].total,
+                "expire": data_points[0].expire_in_ts
+            })
+            data_points.insert(0, original_point)
+        return cls(data_points)
 
     def get_upload(self):
         return [data_point.upload for data_point in self]
@@ -628,7 +676,7 @@ def list_to_gb_in_float(data: list[float | int]):
 def track_group(data: (TrafficDataList[TrafficDataPoint], GranDataList[TrafficDataPoint, GranDataPoint]),
                 _prec=3) -> OrderedDict[str, str]:
     """return a dict of information by the group name"""
-    # collect data by time
+    # collect_all data by time
     start_of_month = data[-1].date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     if isinstance(data, TrafficDataList):
         data = data.latest_month_data().get_data_by_gran(granularity_sec=60 * 60)
@@ -662,7 +710,12 @@ def track_group(data: (TrafficDataList[TrafficDataPoint], GranDataList[TrafficDa
     _7days_additional_download_traffic = total_download - _7days_earliest_point.download
     _7days_additional_traffic = _7days_additional_upload_traffic + _7days_additional_download_traffic
     # todo: week prediction is incorrect
-    _7days_speed_of_day = _7days_additional_traffic / (latest_date - start_of_7days).days
+    if (latest_date - start_of_7days).days:
+        _7days_speed_of_day = _7days_additional_traffic / (latest_date - start_of_7days).days
+    elif (latest_date - start_of_7days).seconds:
+        _7days_speed_of_day = _7days_additional_traffic / (latest_date - start_of_7days).seconds * 3600
+    else:
+        _7days_speed_of_day = 0
     _7days_traffic_predicted = (_7days_speed_of_day * 7 +
                                 _7days_earliest_point.upload + _7days_earliest_point.download)
 

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"
+    <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet"/>
     <title>Traffic Dashboard</title>
     <!-- Set One Dark theme colors -->
     <style>
@@ -19,9 +20,9 @@
             align-items: center; /* Adjust as needed */
           }
         .element {
-        padding: 10px;
-        border: 1px solid #ccc;
-        margin: 5px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin: 5px;
         }
         a {
             color: #61afef;
@@ -35,6 +36,7 @@
             border-radius: 8px;
             overflow: hidden;
             margin-top: 20px;
+            z-index: 1;
         }
         th, td {
             padding: 12px 15px;
@@ -78,11 +80,111 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #565d6c;
         }
+
+        .button-wrapper {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+
+        .btn {
+            background-color: #282c34;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            column-gap: var(--gap);
+            padding: 0.6rem;
+            cursor: pointer;
+            border-radius: var(--radius);
+            border: none;
+            box-shadow: var(--shadow);
+            position: relative;
+          }
+
+          .title {
+            color: #abb2bf;
+          }
+          
+          .bx {
+            font-size: 1.1rem;
+            color: #abb2bf;
+          }
+          
+          .dropdown {
+            position: absolute;
+            width: 250px;
+            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+            margin-top: 0.3rem;
+            background: #282c34;
+            background-color: #282c34;
+          
+            visibility: hidden;
+            opacity: 0;
+            transform: translateY(0.5rem);
+            transition: all 0.1s cubic-bezier(0.16, 1, 0.5, 1);
+          }
+          
+          .dropdown a {
+            display: flex;
+            font-size: 1.1rem;
+            background-color: #282c34;
+            align-items: center;
+            column-gap: var(--gap);
+            padding: 0.8rem 1rem;
+            text-decoration: none;
+            color: #abb2bf;
+          }
+          
+          .dropdown a:hover {
+            background-color: #282c34;
+            color: white;
+          }
+          
+          .show {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0rem);
+          }
+          
+          .arrow {
+            transform: rotate(180deg);
+            transition: 0.2s ease;
+          }
+          
+          .orientation-alert {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            text-align: center;
+            z-index: 2;
+            visibility: hidden;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="mt-5 mb-4" style="text-align: center;">Traffic Dashboard</h1>
+        <div class="orientation-alert" id="orientation-alert">
+            Please rotate your device to landscape mode. <br>请使用横屏浏览
+        </div>
+        <div class="button-wrapper">
+            <button class="btn" id="btn">
+                <h1 class="title mt-5 mb-4" id="title" style="text-align: center;">Traffic Dashboard</h1>
+                <i class="bx bx-chevron-down" id="arrow"></i>
+            </button>
+            <div class="dropdown" id="dropdown">
+            </div>        
+        </div>
         <div id="chartsContainer" class="row">
             <!-- Canvas elements will be dynamically added here -->
         </div>
@@ -90,41 +192,63 @@
     <!-- Include Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
     <script>
+        var portrait = false;
+        function rotateScreen() {
+            const alertElement = document.getElementById('orientation-alert');
+            if (window.innerHeight > window.innerWidth*1.5) {
+                portrait = true;
+                alertElement.style.visibility = 'visible';
+            } else {
+                alertElement.style.visibility = 'hidden';
+                if (portrait) {
+                    portrait = false;
+                }
+            }
+        }
+        var dataXHR = new XMLHttpRequest();
         function fetchDataAndPlotCharts() {
             // Make AJAX request to fetch data for charts
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", "/get_data_glance", true);
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    var dataList = JSON.parse(xhr.responseText);
-                    console.log(dataList)
-                    if (dataList.row == undefined) {
-                        dataList.forEach(function(plotInfo, index) {
-                            // Dynamically add canvas element
-                            var canvasId = "chart" + index;
-                            var canvasContainer = document.createElement("div");
-                            canvasContainer.className = "col-md-6";
-                            canvasContainer.innerHTML = `<canvas id="${canvasId} style="width:100%;height:100%"></canvas>`;
-                            document.getElementById("chartsContainer").appendChild(canvasContainer);
-                            // Plot chart
-                            plotChart(plotInfo, canvasId);
-                        });
-                    } else {
-                        addDataPanel(dataList);
-                        dataList.row.forEach(function(plotInfo, index) {
-                            // Dynamically add canvas element
-                            var canvasId = "chart" + index;
-                            var canvasContainer = document.createElement("div");
-                            canvasContainer.className = "col-md-6";
-                            canvasContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
-                            document.getElementById("chartsContainer").appendChild(canvasContainer);
-                            // Plot chart
-                            plotChart(plotInfo, canvasId);
-                        });
-                    }
-                };
+            dataXHR = new XMLHttpRequest();
+            dataGetUrl = window.location.pathname.replace("dashboard_glance", "get_data_glance")
+            dataXHR.open("GET", dataGetUrl, true);
+            dataXHR.onreadystatechange = function () {
+                plotChartsFromXHR();
             }
-            xhr.send();
+            dataXHR.send();
+        }
+        function plotChartsFromXHR() {
+            if (dataXHR.readyState === 4 && dataXHR.status === 200) {
+                var dataList = JSON.parse(dataXHR.responseText);
+                console.log(dataList);
+                document.getElementById("chartsContainer").innerHTML = "";
+                set_title(dataList.filename.split('.').slice(0, -1).join('.'));
+                if (dataList.row == undefined) {
+                    dataList.forEach(function(plotInfo, index) {
+                        // Dynamically add canvas element
+                        var canvasId = "chart" + index;
+                        var canvasContainer = document.createElement("div");
+                        canvasContainer.className = "canvas-container";
+                        canvasContainer.style ="width:95%;margin:auto;";    
+                        canvasContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+                        document.getElementById("chartsContainer").appendChild(canvasContainer);
+                        // Plot chart
+                        plotChart(plotInfo, canvasId);
+                    });
+                } else {
+                    addDataPanel(dataList);
+                    dataList.row.forEach(function(plotInfo, index) {
+                        // Dynamically add canvas element
+                        var canvasId = "chart" + index;
+                        var canvasContainer = document.createElement("div");
+                        canvasContainer.className = "canvas-container";
+                        canvasContainer.style ="width:95%;margin:auto;"; 
+                        canvasContainer.innerHTML = `<canvas id="${canvasId}""></canvas>`;
+                        document.getElementById("chartsContainer").appendChild(canvasContainer);
+                        // Plot chart
+                        plotChart(plotInfo, canvasId);
+                    });
+                }
+            };
         }
         // Function to plot chart using Chart.js
         function plotChart(plotInfo, canvasId) {
@@ -235,9 +359,9 @@
         function addDataPanel(plotInfo) {
             var divContainer = document.createElement("div");
             divContainer.className = "horizontal-row";
-            divContainer.innerHTML = `<div id="percentageChart" class="col-md-6" style="height: 640px; width: 20%; float: left">
+            divContainer.innerHTML = `<div id="percentageChart" class="col-md-6" style="height:640px;float:left">
                 <canvas id="percentageChartCanvas" width="215" height="500"></canvas></div>
-                <div id="infoTable" class="row" style="height: 640px; width: 80%; float: left"></div>`;
+                <div id="infoTable" class="row" style="height: 640px;flex-grow:1;overflow:auto;float:left"></div>`;
             document.getElementById("chartsContainer").appendChild(divContainer);
             var canvasId = "percentageChartCanvas";
             var ctx = document.getElementById(canvasId).getContext('2d');
@@ -261,10 +385,59 @@
             info_str += '</table>';
             infoTable.innerHTML = info_str;
         }
+        var origin_title = document.getElementById("title").innerHTML;
+        function set_title(title){
+            const title_element = document.getElementById("title");
+            title_element.innerHTML = `${origin_title} - ${title}`
+        }
+        function menu() {
+            var dataXHR = new XMLHttpRequest();
+            const dropdownBtn = document.getElementById("btn");
+            const dropdownMenu = document.getElementById("dropdown");
+            const toggleArrow = document.getElementById("arrow");
+            dataFileListGetUrl = window.location.pathname.replace(RegExp("dashboard_glance(?:\/.+)?"), "get_data_list");
+            dataDashboardUrl = window.location.pathname.replace(RegExp("dashboard_glance(?:\/.+)?"), "dashboard_glance");
+            dataXHR.open("GET", dataFileListGetUrl, true);
+            dataXHR.onreadystatechange = function () {
+                if (dataXHR.readyState === 4 && dataXHR.status === 200) {
+                    var dataFileList = JSON.parse(dataXHR.responseText);
+                    console.log(dataFileList);
+                    dataFileList.forEach(function(item) {
+                        dropdownMenu.innerHTML = dropdownMenu.innerHTML + `<a href="${dataDashboardUrl}/${item}" style="font-size">${item}</a>`
+                    });
+                };
+            };
+            dataXHR.send();
+            // Toggle dropdown function
+            const toggleDropdown = function () {
+                dropdownMenu.classList.toggle("show");
+                toggleArrow.classList.toggle("arrow");
+            };
+            
+            // Toggle dropdown open/close when dropdown button is clicked
+            dropdownBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                toggleDropdown();
+            });
+            
+            // Close dropdown when dom element is clicked
+            document.documentElement.addEventListener("click", function () {
+                if (dropdownMenu.classList.contains("show")) {
+                toggleDropdown();
+                }
+            });
+  
+        }
         // Call the function to fetch data and plot charts after page load
         window.addEventListener('load', function() {
+            menu();
             fetchDataAndPlotCharts();
+            rotateScreen();
         });        
+        window.addEventListener('resize', function() {
+            rotateScreen();
+            plotChartsFromXHR();
+        });
     </script>  
 </body>
 </html>

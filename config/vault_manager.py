@@ -479,11 +479,33 @@ class MainShell(cmd.Cmd):
             save_body = False
         console0.print("save-body =", save_body)
 
+        collect_every_minutes = 60
+        console0.print("collect_all every", collect_every_minutes, "minutes")
+        while True:
+            _r = console_input("collect_all every ? minutes: ")
+            if not len(_r):
+                break
+            elif _r.isdigit():
+                collect_every_minutes = int(_r)
+                break
+        console0.print("collect_all every", collect_every_minutes, "minutes")
+
+        collect_on_full_hour = True
+        console0.print("collect_all on full hour =", collect_on_full_hour)
+        _r = console_input("collect_all on full hour? " + "(Y/n)" if collect_on_full_hour else "(y/N)")
+        if _r.lower() == "y":
+            save_body = True
+        elif _r.lower() == "n":
+            save_body = False
+        console0.print("save-body =", save_body)
+
         new_group = {
             'name': group_name,
             'urls-with-token': urls,
             'save-headers': save_headers,
-            'save-body': save_body
+            'save-body': save_body,
+            'collect_all-every-minutes': collect_every_minutes,
+            'collect_all-on-full-hour': collect_on_full_hour
         }
         console0.print(json.dumps(new_group, indent=self.intend), no_wrap=True)
 
@@ -825,6 +847,10 @@ class EditGroupShell(cmd.Cmd):
                     _r = True
                 elif _r.lower() == "none":
                     _r = None
+                elif _r.isdigit():
+                    _r = int(_r)
+                elif _r.replace('.', '', 1).isdigit():
+                    _r = float(_r)
                 self.group[key] = _r
             print(f"{key} = {self.group[key]}")
             console0.print("---")

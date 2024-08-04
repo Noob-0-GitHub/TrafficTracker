@@ -19,11 +19,11 @@ def main():
     log(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: collected")
 
 
-def collect(repeat=3):
+def collect_all(repeat=3):
     try:
         for _ in range(repeat):
             try:
-                return collector.collect(progress_wrapper=lambda _obj: alive_it(_obj, title="Collecting"))
+                return collector.collect_all(progress_wrapper=lambda _obj: alive_it(_obj, title="Collecting"))
             except Exception as e:
                 log(e)
         return None
@@ -48,7 +48,7 @@ def collect_and_save(repeat=3):
                 return
             log(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: saved {group_name}")
         else:
-            log(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: failed to collect {group_name}")
+            log(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: failed to collect_all {group_name}")
 
 
 def log(*args, **kwargs):  # todo: "on 0" bug fix
