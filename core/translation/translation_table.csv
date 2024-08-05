@@ -1,0 +1,29 @@
+en,zh.*
+Upload,上传流量
+Download,下载流量
+Total,总流量
+Available Traffic,剩余流量
+Total upload(GB),总上传(GB)
+Total download(GB),总下载(GB)
+Available(GB),剩余(GB)
+Expiration time,到期时间
+Traffic limitation,总流量
+Upload traffic used,已用上传流量
+Download traffic used,已用下载流量
+Total traffic used,已用总流量
+Upload in latest 7days,本周上传流量
+Download in latest 7days,本周下载流量
+Total in latest 7days,本周总流量
+Current available traffic,剩余流量
+Used percentage,已用百分比
+Available percentage,可用百分比
+Average speed of day in month,日平均速度(本月)
+Average speed of day in 7days,日平均速度(本周)
+Traffic(GB),流量(GB)
+Traffic(MB/s),流量速率(MB/s)
+Traffic,流量图
+Traffic Speed,流量速率图
+Traffic in latest 7 days,本周流量图
+Traffic Speed in latest 7 days,本周流量速率图
+Traffic in latest 24 hours,今日流量图
+Traffic Speed in latest 24 hours,今日流量速率图

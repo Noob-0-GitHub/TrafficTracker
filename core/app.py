@@ -4,12 +4,12 @@ import warnings
 from datetime import datetime
 from threading import Thread
 
-from flask import redirect, url_for, render_template, Flask
+from flask import request, redirect, url_for, render_template, Flask
 from waitress import serve
 
 import collector
 import scheduler
-from models import parse_data, save_data, list_data_file
+from models import parse_data, save_data, newest_data_file
 from web_packer import dashboard_glance_data_packer, dashboard_glance_data_list_packer
 
 os.chdir(os.path.dirname(__file__))
@@ -113,12 +113,12 @@ def app_serve(host='0.0.0.0', port=8080, **kwargs):
 
 @app.route('/get_data_glance')
 def get_data_glance():
-    return dashboard_glance_data_packer()
+    return dashboard_glance_data_packer(language=request.args.get('lang', 'en'))
 
 
 @app.route('/get_data_glance/<filename>')
 def get_data_glance_selected(filename):
-    return dashboard_glance_data_packer(filename + '.json')
+    return dashboard_glance_data_packer(filename + '.json', language=request.args.get('lang', 'en'))
 
 
 @app.route('/get_data_list')
@@ -128,14 +128,12 @@ def get_data_list():
 
 @app.route('/')
 def index():
-    return redirect(url_for('dashboard_glance'))
+    return redirect(url_for('dashboard_glance_selected', _filename=newest_data_file()))
 
 
 @app.route('/dashboard_glance')
 def dashboard_glance():
-    files = list_data_file()
-    files.sort(key=lambda x: x.stat().st_mtime)
-    return redirect(url_for('dashboard_glance_selected', _filename=os.path.splitext(files[-1].name)[0]))
+    return redirect(url_for('dashboard_glance_selected', _filename=newest_data_file()))
 
 
 @app.route('/dashboard_glance/<_filename>')  # filename without an extension
@@ -150,7 +148,7 @@ def dashboard_glance_selected(_filename):
 
 
 if __name__ == '__main__':
-    app.debug = True
+    # app.debug = True
 
     log = Log(os.path.abspath("log.txt"), auto_save=True)
     log(f"log started, saving at {log.path}")

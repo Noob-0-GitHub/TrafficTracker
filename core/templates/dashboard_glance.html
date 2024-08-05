@@ -131,33 +131,36 @@
           
           .dropdown {
             position: absolute;
-            width: 250px;
+            width: max-content;
             box-shadow: var(--shadow);
             border-radius: var(--radius);
             margin-top: 0.3rem;
-            background: #282c34;
-            background-color: #282c34;
-          
+            background-color: #282c34f0;
             visibility: hidden;
             opacity: 0;
             transform: translateY(0.5rem);
             transition: all 0.1s cubic-bezier(0.16, 1, 0.5, 1);
-          }
-          
-          .dropdown a {
+            z-index: 1;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        
+        .dropdown a {
             display: flex;
             font-size: 1.1rem;
-            background-color: #282c34;
+            background-color: #282c3400;
             align-items: center;
             column-gap: var(--gap);
             padding: 0.8rem 1rem;
             text-decoration: none;
-            color: #abb2bf;
-          }
-          
-          .dropdown a:hover {
+            color: #abb2bfaa;
+        }
+        
+        .dropdown a:hover {
             background-color: #282c34;
             color: white;
+            border-radius: 10px;
+            padding: 0.8rem 1rem;
           }
           
           .show {
@@ -225,11 +228,20 @@
                 }
             }
         }
+        function getLanguage() {
+            var type = navigator.appName;
+            if (type == "Netscape") {
+                var lang = navigator.language;
+            } else {
+                var lang = navigator.userLanguage;
+            }
+            return lang;
+        }
         var dataXHR = new XMLHttpRequest();
-        function fetchDataAndPlotCharts() {
+        function fetchData() {
             // Make AJAX request to fetch data for charts
             dataXHR = new XMLHttpRequest();
-            dataGetUrl = window.location.pathname.replace("dashboard_glance", "get_data_glance")
+            dataGetUrl = `${window.location.pathname.replace("dashboard_glance", "get_data_glance")}?lang=${getLanguage()}`
             dataXHR.open("GET", dataGetUrl, true);
             dataXHR.onreadystatechange = function () {
                 plotChartsFromXHR();
@@ -451,7 +463,7 @@
         // Call the function to fetch data and plot charts after page load
         window.addEventListener('load', function() {
             menu();
-            fetchDataAndPlotCharts();
+            fetchData();
             rotateScreen();
         });
         var latestWidth = window.innerWidth;

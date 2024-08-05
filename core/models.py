@@ -64,6 +64,12 @@ def list_data_file() -> list[os.DirEntry]:
             if file.is_file() and file.name.endswith('.json')]
 
 
+def newest_data_file(with_extension: bool = False) -> str:
+    files = list_data_file()
+    files.sort(key=lambda x: x.stat().st_mtime)
+    return files[-1].name if with_extension else os.path.splitext(files[-1].name)[0]
+
+
 # This is a data point sample
 """
   {
