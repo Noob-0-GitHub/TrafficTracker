@@ -161,8 +161,7 @@ if __name__ == '__main__':
 
     sche_collector()
     log(f"collector scheduled, {scheduler.get_jobs()}")
-    # scheduler.schedule_lib.every(sche_interval).minutes.do(lambda: log.save())
 
     collector_scheduler = scheduler.Scheduler(5)
     log(f"collector_scheduler starting {collector_scheduler}")
-    # collector_scheduler.start()
+    collector_scheduler.start()

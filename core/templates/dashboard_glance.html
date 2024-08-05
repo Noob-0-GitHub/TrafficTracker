@@ -9,10 +9,27 @@
     <!-- Set One Dark theme colors -->
     <style>
         body {
-            background-color: #282c34;
             color: #abb2bf;
+            width: 100%;
+            height: 100%;
+            margin: 0px;
+            padding: 0px;
+            display: block;
             overflow: auto;
+            overflow-x: hidden;
             scrollbar-base-color: #282c34;
+            background-image: url('https://raw.githubusercontent.com/dada878/LimeStartPlus/master/src/assets/background.webp'); /* 替换为你的背景图路径 */
+            background-attachment: fixed;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .container {
+            width: 88%;
+            margin: auto;
+            background-color: #282c34bb;
+            backdrop-filter: blur(25px); /* 添加模糊效果 */
+            -webkit-backdrop-filter: blur(25px); /* 兼容Webkit内核浏览器 */
         }
         .horizontal-row {
             display: flex;
@@ -41,17 +58,17 @@
         th, td {
             padding: 12px 15px;
             text-align: left;
-            border-bottom: 1px solid #4b5263;
+            border-bottom: 1px solid #4b5263bb;
             line-height: 0.85; /* 调整行距 */    
         }
         th {
-            background-color: #3e4451;
+            background-color: #3e4451aa;
         }
         tr:nth-child(even) {
-            background-color: #2c313c;
+            background-color: #2c313caa;
         }
         tr:hover {
-            background-color: #3e4451;
+            background-color: #3e4451aa;
         }
         /* Adjusting column widths */
         th:first-child, td:first-child {
@@ -90,7 +107,7 @@
 
 
         .btn {
-            background-color: #282c34;
+            background-color: #282c3400;
             display: flex;
             align-items: center;
             justify-content: flex-start;
@@ -175,7 +192,7 @@
 <body>
     <div class="container">
         <div class="orientation-alert" id="orientation-alert">
-            Please rotate your device to landscape mode. <br>请使用横屏浏览
+            Please rotate your device to landscape mode.
         </div>
         <div class="button-wrapper">
             <button class="btn" id="btn">
@@ -183,16 +200,19 @@
                 <i class="bx bx-chevron-down" id="arrow"></i>
             </button>
             <div class="dropdown" id="dropdown">
-            </div>        
+            </div>
         </div>
-        <div id="chartsContainer" class="row">
-            <!-- Canvas elements will be dynamically added here -->
+        <div class="box" style="width: 95%; height: 95%; margin: auto;">
+            <div id="chartsContainer" class="row">
+                <!-- Canvas elements will be dynamically added here -->
+            </div>
         </div>
     </div>
     <!-- Include Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
     <script>
         var portrait = false;
+        Chart.defaults.color = "#abb2bf";
         function rotateScreen() {
             const alertElement = document.getElementById('orientation-alert');
             if (window.innerHeight > window.innerWidth*1.5) {
@@ -433,10 +453,14 @@
             menu();
             fetchDataAndPlotCharts();
             rotateScreen();
-        });        
+        });
+        var latestWidth = window.innerWidth;
         window.addEventListener('resize', function() {
             rotateScreen();
-            plotChartsFromXHR();
+            if (latestWidth != window.innerWidth) {
+                latestWidth = window.innerWidth;
+                plotChartsFromXHR();
+            }
         });
     </script>  
 </body>
