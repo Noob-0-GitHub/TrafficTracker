@@ -3,7 +3,6 @@ import os
 import re
 import warnings
 from dataclasses import asdict
-from typing import Hashable
 
 from flask import jsonify
 
@@ -13,6 +12,8 @@ from models import data_folder_path, parse_data, list_data_file_name, TrafficDat
     GranDataList, track_group
 
 default_translation_table_path = os.path.join(os.path.dirname(__file__), 'translation', 'translation_table.csv')
+
+date_label_regex = re.compile(r"\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?")
 
 
 def dict_merge(*dicts):
@@ -54,38 +55,34 @@ def build_translation_dict(init_language: str, target_language,
 def dict_translate(_dict: dict, trans_table: dict[str, str], trans_re_list: list[re.Pattern, str]):
     new_dict = {}
     for key, value in _dict.items():
-        if isinstance(key, Hashable):
-            if key in trans_table:
-                # noinspection PyTypeChecker
-                key = trans_table[key]
-            elif isinstance(key, str):
-                if key.lower() in trans_table:
-                    key = trans_table[key.lower()]
-                else:
-                    for trans_row in trans_re_list:
-                        if trans_row[0].match(key):
-                            key = trans_row[1]
-                            break
+        if isinstance(key, str):
+            if key.lower() in trans_table:
+                key = trans_table[key.lower()]
+            else:
+                for trans_row in trans_re_list:
+                    if trans_row[0].match(key):
+                        key = trans_row[1]
+                        break
 
-        if isinstance(value, Hashable):
-            if value in trans_table:
-                # noinspection PyTypeChecker
-                value = trans_table[value]
-            elif isinstance(value, str):
-                if value.lower() in trans_table:
-                    value = trans_table[value.lower()]
-                else:
-                    for trans_row in trans_re_list:
-                        if trans_row[0].match(value):
-                            value = trans_row[1]
-                            break
+        if isinstance(value, str):
+            if value.lower() in trans_table:
+                value = trans_table[value.lower()]
+            else:
+                for trans_row in trans_re_list:
+                    if trans_row[0].match(value):
+                        value = trans_row[1]
+                        break
 
         new_dict[key] = value
     return new_dict
 
 
 def deep_dict_translate(_dict: dict, trans_table: dict[str, str], trans_re_list: list[re.Pattern, str],
-                        skip_keys: (tuple[str], list[str]) = ('data', 'labels')):
+                        skip_keys: (tuple[str], list[str]) = (
+                                'data', 'titleFontSize', 'titleColor', 'backgroundColor', 'borderColor',
+                                'fill', 'pointRadius', 'pointBackgroundColor', 'pointBorderColor', 'tension',
+                                'type', 'value', 'circumference', 'cutoutPercentage', 'rotation'
+                        )):
     # return dict_merge(
     #     dict_translate({key: value for key, value in _dict.items()
     #                     if not isinstance(value, dict)}, trans_table, trans_re_list),
@@ -94,6 +91,8 @@ def deep_dict_translate(_dict: dict, trans_table: dict[str, str], trans_re_list:
     #     {key: [deep_dict_translate(i, trans_table, trans_re_list) for i in value] for key, value in _dict.items()
     #      if isinstance(value, list)}
     # ) if isinstance(_dict, dict) else _dict
+    if isinstance(_dict, str) and _dict.lower() in trans_table:
+        return trans_table[_dict.lower()]
     if not isinstance(_dict, dict):
         return _dict
     translatable = {}
@@ -101,10 +100,15 @@ def deep_dict_translate(_dict: dict, trans_table: dict[str, str], trans_re_list:
     for key, value in _dict.items():
         if key in skip_keys:
             untranslatable[key] = value
+            # print(f"skip {key}: {value}")
         elif isinstance(value, dict):
             untranslatable[key] = deep_dict_translate(value, trans_table, trans_re_list)
         elif isinstance(value, list):
-            untranslatable[key] = [deep_dict_translate(i, trans_table, trans_re_list) for i in value]
+            if value and isinstance(value[0], str) and date_label_regex.match(value[0]):
+                # print(f"skip {key}: {value}")
+                untranslatable[key] = value
+            else:
+                untranslatable[key] = [deep_dict_translate(i, trans_table, trans_re_list) for i in value]
         else:
             translatable[key] = value
     return dict_merge(
@@ -224,7 +228,7 @@ def dashboard_glance_data_packer(filename: str = None, language: str = "en"):
     percentage_available_chart = plot.ChartJS.PiePlot(
         title="Available Traffic", labels=["Total upload(GB)", "Total download(GB)", "Available(GB)"],
         cutoutPercentage="18%", datasets=[
-            plot.ChartJS.Pie(name="Traffic(GB)", background_colors=["#84a729", "#004c6d", "coral"], data=[
+            plot.ChartJS.Pie(name="Traffic total(GB)", background_colors=["#84a729", "#004c6d", "coral"], data=[
                 month_traffic_data.get_upload()[-1] / 1024 / 1024 / 1024,
                 month_traffic_data.get_download()[-1] / 1024 / 1024 / 1024,
                 (month_traffic_data[-1].total - month_traffic_data.get_total_traffic()[-1]) / 1024 / 1024 / 1024
@@ -261,5 +265,5 @@ en_to_zh_trans_table, en_to_zh_trans_re_list = build_translation_dict('en', 'zh'
 
 if __name__ == '__main__':
     # translation test
-    _trans_table, _trans_re_list = build_translation_dict('en', 'zh')
-    print(deep_dict_translate({'traffic': 20, 'lines': {'upload': 10, 'download': 10}}, _trans_table, _trans_re_list))
+    print(deep_dict_translate({'traffic': 20, 'lines': {'upload': 10, 'download': 10}},
+                              en_to_zh_trans_table, en_to_zh_trans_re_list))

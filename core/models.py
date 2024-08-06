@@ -194,7 +194,7 @@ class TrafficDataPoint(BaseDataPoint):
 
         self.gmt_offset = 0
         if gmt_offset:
-            self.set_gmt_offset(gmt_offset)
+            self. set_gmt_offset(gmt_offset)
 
     def set_gmt_offset(self, gmt_offset):
         if self.date:
@@ -740,19 +740,19 @@ def track_group(data: (TrafficDataList[TrafficDataPoint], GranDataList[TrafficDa
     # day_speed = day_additional_traffic / (latest_date - start_of_day).days
 
     track_data: OrderedDict[str, str] = OrderedDict()
-    track_data['Expiration time'] = expire.strftime("%Y-%m-%d %H:%M:%S")
+    track_data['Current available traffic'] = traffic_to_gb_in_str(available_traffic, _prec=_prec)
     track_data['Traffic limitation'] = traffic_to_gb_in_str(traffic_limit, _prec=_prec)
+    track_data['Total traffic used'] = traffic_to_gb_in_str(total_traffic, _prec=_prec)
     track_data['Upload traffic used'] = traffic_to_gb_in_str(total_upload, _prec=_prec)
     track_data['Download traffic used'] = traffic_to_gb_in_str(total_download, _prec=_prec)
-    track_data['Total traffic used'] = traffic_to_gb_in_str(total_traffic, _prec=_prec)
+    track_data['Total in latest 7days'] = traffic_to_gb_in_str(_7days_additional_traffic, _prec=_prec)
     track_data['Upload in latest 7days'] = traffic_to_gb_in_str(_7days_additional_upload_traffic, _prec=_prec)
     track_data['Download in latest 7days'] = traffic_to_gb_in_str(_7days_additional_download_traffic, _prec=_prec)
-    track_data['Total in latest 7days'] = traffic_to_gb_in_str(_7days_additional_traffic, _prec=_prec)
-    track_data['Current available traffic'] = traffic_to_gb_in_str(available_traffic, _prec=_prec)
-    track_data['Used percentage'] = f"{used_percent * 100:.{_prec}f}%" \
-        if _prec >= 0 else f"{used_percent * 100}%"
+    track_data['Expiration time'] = expire.strftime("%Y-%m-%d %H:%M:%S")
     track_data['Available percentage'] = f"{available_percent * 100:.{_prec}f}%" \
         if _prec >= 0 else f"{available_percent * 100}%"
+    track_data['Used percentage'] = f"{used_percent * 100:.{_prec}f}%" \
+        if _prec >= 0 else f"{used_percent * 100}%"
     track_data[
         'Average speed of day in month'] = f"{traffic_to_gb_in_str(month_speed_of_day, _prec=_prec).rstrip()}/day"
     track_data[

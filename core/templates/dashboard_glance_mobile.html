@@ -29,27 +29,23 @@
             overflow: auto;
             overflow-x: hidden;
             scrollbar-base-color: #282c34;
-            background-image: url('https://raw.githubusercontent.com/dada878/LimeStartPlus/master/src/assets/background.webp'); /* 替换为你的背景图路径 */
-            background-attachment: fixed;
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-position: center;
+            scrollbar-track-color: #282c34;
+            scrollbar-arrow-color: #abb2bf;
         }
         .container {
-            width: 88%;
+            width: 100%;
             margin: auto;
-            background-color: #282c34bb;
-            backdrop-filter: blur(25px); /* 添加模糊效果 */
-            -webkit-backdrop-filter: blur(25px); /* 兼容Webkit内核浏览器 */
+            background-color: #282c34;
         }
         .horizontal-row {
             display: flex;
-            margin-bottom: 60px;
+            justify-content: space-between; /* Adjust as needed */
+            align-items: center; /* Adjust as needed */
           }
         .element {
             padding: 10px;
             border: 1px solid #ccc;
-            margin: 5px;
+            margin: 0px;
         }
         a {
             color: #61afef;
@@ -63,23 +59,22 @@
             width: 100%;
             border-radius: 10px;
             overflow: hidden;
-            margin-top: 20px;
             z-index: 1;
         }
         th, td {
             padding: 12px 15px;
             text-align: left;
-            border-bottom: 1px solid #4b5263bb;
+            border-bottom: 1px solid #4b5263;
             line-height: 0.85; /* 调整行距 */    
         }
         th {
-            background-color: #3e4451aa;
+            background-color: #3e4451;
         }
         tr:nth-child(even) {
-            background-color: #2c313caa;
+            background-color: #2c313c;
         }
         tr:hover {
-            background-color: #3e4451aa;
+            background-color: #3e4451;
         }
         /*
         th:first-child, td:first-child {
@@ -165,7 +160,7 @@
             column-gap: var(--gap);
             padding: 0.8rem 1rem;
             text-decoration: none;
-            color: #abb2bfaa;
+            color: #abb2bf;
         }
         
         .dropdown a:hover {
@@ -217,7 +212,7 @@
             <div class="dropdown" id="dropdown">
             </div>
         </div>
-        <div class="box" style="width: 95%; height: 95%; margin: auto;">
+        <div class="box" style="width: 98%; height: 100%; margin: auto;">
             <div id="chartsContainer" class="row">
                 <!-- Canvas elements will be dynamically added here -->
             </div>
@@ -226,12 +221,31 @@
     <!-- Include Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
     <script>
+        var portrait = false;
         Chart.defaults.color = "#abb2bf";
-        function ifMobile() {
+        function rotateScreen() {
             const alertElement = document.getElementById('orientation-alert');
-            if (outerWidth < 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent)) {
-                window.location.replace(window.location.pathname.replace("dashboard_glance", "dashboard_glance_mobile"));
+            if (window.innerHeight > window.innerWidth*1.5) {
+                portrait = true;
+                alertElement.style.visibility = 'visible';
+            } else {
+                alertElement.style.visibility = 'hidden';
+                if (portrait) {
+                    portrait = false;
+                }
             }
+        }
+        function formatTrafficString(input, decimalPlaces) {
+            // 正则表达式匹配数值和单位
+            const regex = /(\d+\.\d+|\d+)(\s*GB\/day|\s*GB)/g;
+            if (decimalPlaces === undefined) {
+                decimalPlaces = 3;
+            }
+            return input.replace(regex, (match, number, unit) => {
+                // 转换为浮点数并格式化为指定小数位数
+                const formattedNumber = parseFloat(number).toFixed(decimalPlaces);
+                return formattedNumber + unit;
+            });
         }
         function getLanguage() {
             var type = navigator.appName;
@@ -246,7 +260,7 @@
         function fetchData() {
             // Make AJAX request to fetch data for charts
             dataXHR = new XMLHttpRequest();
-            dataGetUrl = `${window.location.pathname.replace("dashboard_glance", "get_data_glance")}?lang=${getLanguage()}`
+            dataGetUrl = `${window.location.pathname.replace("dashboard_glance_mobile", "get_data_glance")}?lang=${getLanguage()}`
             dataXHR.open("GET", dataGetUrl, true);
             dataXHR.onreadystatechange = function () {
                 plotChartsFromXHR();
@@ -265,7 +279,7 @@
                         var canvasId = "chart" + index;
                         var canvasContainer = document.createElement("div");
                         canvasContainer.className = "canvas-container";
-                        canvasContainer.style ="width:95%;margin:30px 0;";    
+                        canvasContainer.style ="width:95%;margin:auto;";    
                         canvasContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
                         document.getElementById("chartsContainer").appendChild(canvasContainer);
                         // Plot chart
@@ -278,7 +292,7 @@
                         var canvasId = "chart" + index;
                         var canvasContainer = document.createElement("div");
                         canvasContainer.className = "canvas-container";
-                        canvasContainer.style ="width:95%;margin:30px 0;"; 
+                        canvasContainer.style ="width:95%;margin:auto;"; 
                         canvasContainer.innerHTML = `<canvas id="${canvasId}""></canvas>`;
                         document.getElementById("chartsContainer").appendChild(canvasContainer);
                         // Plot chart
@@ -296,6 +310,7 @@
                     data: plotInfo,
                     options: {
                         responsive: true,
+                        aspectRatio: plotInfo.aspectRatio || 1.8,
                         scales: {
                             x: {
                                 title: {
@@ -395,28 +410,114 @@
         }
         function addDataPanel(plotInfo) {
             var divContainer = document.createElement("div");
-            divContainer.className = "horizontal-row";
-            divContainer.innerHTML = `<div id="percentageChart" class="col-md-6" style="height:max-content;">
-                <canvas id="percentageChartCanvas" width="215" height="500"></canvas></div>
-                <div id="infoTable" class="row" style="height:500;flex-grow:1;overflow:auto;margin-left:15px"></div>`;
+            divContainer.className = "info-panel";
+            divContainer.style ="";
+            divContainer.innerHTML = `<div id="percentageChart" class="col-md-6" style="width:100%;height:${outerHeight*0.16}px;display:flex;flex-direction:column">
+                <canvas id="percentageChartCanvas"></canvas></div>
+                <div id="infoTable" class="row" style="flex-grow:1;overflow:auto;"></div>`;
             document.getElementById("chartsContainer").appendChild(divContainer);
-            var canvasId = "percentageChartCanvas";
-            var ctx = document.getElementById(canvasId).getContext('2d');
+            var ctx = document.getElementById("percentageChartCanvas").getContext('2d');
+            var percentageRawDatasets = plotInfo.percentageAvailableChart.datasets[0];
+            var percentageDatasets = plotInfo.percentageAvailableChart.labels.map((label, index) => ({
+                label: plotInfo.percentageAvailableChart.labels[index],
+                // data: plotInfo.percentageAvailableChart.datasets.map((dataset) => dataset.data[index]),
+                data: [percentageRawDatasets.data[index]],
+                borderColor: 'rgba(0, 0, 0, 0)',
+                backgroundColor: percentageRawDatasets.backgroundColor[index],
+                borderWidth: 2,
+                borderSkipped: false,
+            }));
+            const percentageDatasetsNames = plotInfo.percentageAvailableChart.datasets.map((dataset) => dataset.name);
             var newChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: plotInfo.percentageAvailableChart,
+                type: 'bar',
+                data: {
+                    labels: percentageDatasetsNames,
+                    datasets: percentageDatasets
+                },
                 options: {
-                    responsive: false,
-                    cutout: plotInfo.percentageAvailableChart.cutoutPercentage || "16%",
-                    rotation: plotInfo.percentageAvailableChart.rotation || 360,
-                    circumference: plotInfo.percentageAvailableChart.circumferencePercentage || 180,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y', // 横向条形图
+                    plugins: {
+                        title: {
+                            display: false,
+                        },
+                        legend: {
+                            display: false,
+                            position: 'bottom',
+                        },
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            display: false // 隐藏x轴
+                        },
+                        y: {
+                            stacked: true,
+                            display: false // 隐藏y轴
+                        }
+                    },
                 }
-            })
+            });
+            /* Abandoned code
+            plotInfo.percentageAvailableChart.datasets.forEach(function (dataset, dataset_index) {
+                var canvasContainerId = `percentageChartCanvasContainer${dataset_index}`;
+                var canvasId = `percentageChartCanvas${dataset_index}`;
+                var canvasContainer = document.createElement("div");
+                canvasContainer.id = canvasContainerId;
+                canvasContainer.className = "canvas-container";
+                canvasContainer.style =`height:${100 / plotInfo.percentageAvailableChart.datasets.length}%;width:100%;z-index:1;`;
+                canvasContainer.innerHTML = `<canvas id="${canvasId}""></canvas>`;
+                document.getElementById("percentageChart").appendChild(canvasContainer);
+                var ctx = document.getElementById(canvasId).getContext('2d');
+                var percentageRawDatasets = dataset;
+                var percentageDatasets = plotInfo.percentageAvailableChart.labels.map((label, index) => ({
+                    label: plotInfo.percentageAvailableChart.labels[index],
+                    // data: plotInfo.percentageAvailableChart.datasets.map((dataset) => dataset.data[index]),
+                    data: [percentageRawDatasets.data[index]],
+                    borderColor: 'rgba(0, 0, 0, 0)',
+                    backgroundColor: percentageRawDatasets.backgroundColor[index],
+                    borderWidth: 2,
+                    borderSkipped: false,
+                }));
+                const percentageDatasetsNames = plotInfo.percentageAvailableChart.datasets.map((dataset) => dataset.name);
+                var newChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: percentageDatasetsNames,
+                        datasets: percentageDatasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y', // 横向条形图
+                        plugins: {
+                            title: {
+                                display: false,
+                            },
+                            legend: {
+                                display: false,
+                                position: 'bottom',
+                            },
+                        },
+                        scales: {
+                            x: {
+                                stacked: true,
+                                display: false // 隐藏x轴
+                            },
+                            y: {
+                                stacked: true,
+                                display: false // 隐藏y轴
+                            }
+                        },
+                    }
+                });
+            }); */
             var infoTable = document.getElementById("infoTable");
             var info_str = '<table>';
             plotInfo.infoTable.forEach(function(item) {
                 if (item.name.length < 35) {   
-                    info_str += '<tr><td>' + item.name + '</td><td>' + item.value + '</td></tr>';
+                    info_str += '<tr><td>' + item.name + '</td><td>' + formatTrafficString(item.value) + '</td></tr>';
                 }
             })
             info_str += '</table>';
@@ -432,8 +533,8 @@
             const dropdownBtn = document.getElementById("btn");
             const dropdownMenu = document.getElementById("dropdown");
             const toggleArrow = document.getElementById("arrow");
-            dataFileListGetUrl = window.location.pathname.replace(RegExp("dashboard_glance(?:\/.+)?"), "get_data_list");
-            dataDashboardUrl = window.location.pathname.replace(RegExp("dashboard_glance(?:\/.+)?"), "dashboard_glance");
+            dataFileListGetUrl = window.location.pathname.replace(RegExp("dashboard_glance_mobile(?:\/.+)?"), "get_data_list");
+            dataDashboardUrl = window.location.pathname.replace(RegExp("dashboard_glance_mobile(?:\/.+)?"), "dashboard_glance_mobile");
             dataXHR.open("GET", dataFileListGetUrl, true);
             dataXHR.onreadystatechange = function () {
                 if (dataXHR.readyState === 4 && dataXHR.status === 200) {
@@ -469,10 +570,11 @@
         window.addEventListener('load', function() {
             menu();
             fetchData();
-            ifMobile();
+            rotateScreen();
         });
         var latestWidth = window.innerWidth;
         window.addEventListener('resize', function() {
+            rotateScreen();
             if (latestWidth != window.innerWidth) {
                 latestWidth = window.innerWidth;
                 plotChartsFromXHR();

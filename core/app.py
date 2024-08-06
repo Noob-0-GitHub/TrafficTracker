@@ -141,10 +141,14 @@ def dashboard_glance_selected(_filename):
     return render_template('dashboard_glance.html')
 
 
-# todo: add dashboard_pro.html
-# @app.route('/dashboard_pro')
-# def dashboard_pro():
-#     return render_template('dashboard_pro.html')
+@app.route('/dashboard_glance_mobile')
+def dashboard_glance_mobile():
+    return redirect(url_for('dashboard_glance_selected_mobile', _filename=newest_data_file()))
+
+
+@app.route('/dashboard_glance_mobile/<_filename>')  # filename without an extension
+def dashboard_glance_selected_mobile(_filename):
+    return render_template('dashboard_glance_mobile.html')
 
 
 if __name__ == '__main__':

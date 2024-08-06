@@ -3,10 +3,13 @@ Upload,上传流量
 Download,下载流量
 Total,总流量
 Available Traffic,剩余流量
+Traffic Total(GB	),流量总计
+Traffic in last 7 days(GB),本周流量
+Traffic in last 24 hours(GB),今日流量
 Total upload(GB),总上传(GB)
 Total download(GB),总下载(GB)
 Available(GB),剩余(GB)
-Expiration time,到期时间
+expiration time,到期时间
 Traffic limitation,总流量
 Upload traffic used,已用上传流量
 Download traffic used,已用下载流量
