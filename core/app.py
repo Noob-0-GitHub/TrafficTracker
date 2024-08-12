@@ -20,6 +20,8 @@ sche_interval = 1  # seconds
 
 app = Flask(__name__)
 
+env_port = os.environ.get("TRAFFIC_TRACKER_PORT", 8080)
+
 
 class Log:
     def __init__(self, path, encoding="utf-8", auto_save=True, print_out=True):
@@ -157,9 +159,9 @@ if __name__ == '__main__':
     log = Log(os.path.abspath("log.txt"), auto_save=True)
     log(f"log started, saving at {log.path}")
 
-    app_thread = Thread(target=app_serve)
+    app_thread = Thread(target=app_serve, kwargs={'host': '0.0.0.0', 'port': env_port})
     app_thread.start()
-    log(f"app started in thread {app_thread}")
+    log(f"app started in thread {app_thread}, port {env_port}")
 
     sche_collector()
     log(f"collector scheduled, {scheduler.get_jobs()}")
