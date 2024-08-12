@@ -194,7 +194,7 @@ class TrafficDataPoint(BaseDataPoint):
 
         self.gmt_offset = 0
         if gmt_offset:
-            self. set_gmt_offset(gmt_offset)
+            self.set_gmt_offset(gmt_offset)
 
     def set_gmt_offset(self, gmt_offset):
         if self.date:
@@ -771,7 +771,6 @@ def track_group(data: (TrafficDataList[TrafficDataPoint], GranDataList[TrafficDa
 
 def _test():
     from rich import print
-    from main import parse_data
 
     data = parse_data([json_file for json_file in os.listdir(data_folder_path) if json_file.endswith('.json')][0])
     # print(data)
