@@ -16,11 +16,11 @@ os.chdir(os.path.dirname(__file__))
 
 collector.print_out_response_headers = False
 collector.print_out_response_body = False
-sche_interval = 1  # seconds
-
-app = Flask(__name__)
 
 env_port = os.environ.get("TRAFFIC_TRACKER_PORT", 8080)
+env_sche_interval = os.environ.get("TRAFFIC_TRACKER_SCHE_INTERVAL", 0.1)
+
+app = Flask(__name__)
 
 
 class Log:
@@ -166,6 +166,8 @@ if __name__ == '__main__':
     sche_collector()
     log(f"collector scheduled, {scheduler.get_jobs()}")
 
-    collector_scheduler = scheduler.Scheduler(5)
+    collector_scheduler = scheduler.Scheduler(env_sche_interval)
     log(f"collector_scheduler starting {collector_scheduler}")
     collector_scheduler.start()
+
+#
