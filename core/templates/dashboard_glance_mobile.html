@@ -5,6 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet"/>
+    <link rel="icon" type="image/x-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAAAXNSR0IArs4c6QAAAWVJREFUWEftmDtOxDAQhr9tqam4DIiaCyBRI5BAgqXhJfEoYAteEqst9gDcgBbBzWAkGxmvs2McO0nhkaLEsWx/+WfGI2fEwGw0MB4qkOaRkEIbgFxin+bS5snWHwK6Bq7MCjc/d2l3ZhVIk7oqVBXSFND6+4yhTeDDB+wL6Bk4MvvdrQvVB9AjMHYgtoB3284JdAnsATPgriFWHoATp0+UcuGC1T6ldLwCB85CL8CxB3UPnDrvpsBhiRjyYewaLlQUjAxs67InT4kvYN35ainOYrZYy3NIvd8hbYB8ZSbAGeCr4Xol6KYcWdYEY+e2af0vmFSXaTAWQrJt3zRUZVLT3v9ycc/5knKwa/rmWsnIAbQ0OGMBcqT9BbAa2GdSGf6Ma5NlWQByKFQEJDWGisLEpL3svHI2K2UL5z4thkqB2HkXzn0hoG3grTSJmT8KaAXYAdY6gIpyWQcczUvU3zGa/INT6Bu02GEl/ooRJQAAAABJRU5ErkJggg==">
     <title>Traffic Dashboard</title>
     <!-- Set One Dark theme colors -->
     <style>
@@ -12,12 +13,12 @@
             overflow-y: scroll;
           }
         :root {
-        overflow-y: auto;
-        overflow-x: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
         
         :root body {
-        position: absolute;
+            position: absolute;
         }
         body {
             color: #abb2bf;
@@ -46,6 +47,10 @@
             padding: 10px;
             border: 1px solid #ccc;
             margin: 0px;
+        }
+        .canvas-container {
+            aspect-ratio: var(--chart-aspect-ratio);
+            width: 100%;
         }
         a {
             color: #61afef;
@@ -109,7 +114,6 @@
             display: flex;
             justify-content: center;
             width: 100%;
-            margin-bottom: 1rem;
         }
 
 
@@ -119,7 +123,6 @@
             align-items: center;
             justify-content: flex-start;
             column-gap: var(--gap);
-            padding: 0.6rem;
             cursor: pointer;
             border-radius: var(--radius);
             border: none;
@@ -223,17 +226,9 @@
     <script>
         var portrait = false;
         Chart.defaults.color = "#abb2bf";
-        function rotateScreen() {
-            const alertElement = document.getElementById('orientation-alert');
-            if (window.innerHeight > window.innerWidth*1.5) {
-                portrait = true;
-                alertElement.style.visibility = 'visible';
-            } else {
-                alertElement.style.visibility = 'hidden';
-                if (portrait) {
-                    portrait = false;
-                }
-            }
+        function setChartAspectRatio() {
+            document.documentElement.style.setProperty('--chart-aspect-ratio', window.innerWidth / (window.innerWidth / 1.8 + 160));
+            console.log(window.innerWidth / (window.innerWidth / 1.5 + 100));
         }
         function formatTrafficString(input, decimalPlaces) {
             // 正则表达式匹配数值和单位
@@ -310,6 +305,7 @@
                     data: plotInfo,
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         aspectRatio: plotInfo.aspectRatio || 1.8,
                         scales: {
                             x: {
@@ -355,6 +351,7 @@
                     data: plotInfo,
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         plugins: {
                             title: {
                                 display: true,
@@ -373,6 +370,7 @@
                     data: plotInfo,
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         cutout: plotInfo.cutoutPercentage || "0%",
                         rotation: plotInfo.rotation || 0,
                         circumference: plotInfo.circumferencePercentage || 360,
@@ -394,6 +392,7 @@
                     data: plotInfo,
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         plugins: {
                             title: {
                                 display: true,
@@ -412,7 +411,7 @@
             var divContainer = document.createElement("div");
             divContainer.className = "info-panel";
             divContainer.style ="";
-            divContainer.innerHTML = `<div id="percentageChart" class="col-md-6" style="width:100%;height:${outerHeight*0.16}px;display:flex;flex-direction:column">
+            divContainer.innerHTML = `<div id="percentageChart" class="col-md-6" style="width:100%;height:${outerHeight*0.05}px;display:flex;flex-direction:column">
                 <canvas id="percentageChartCanvas"></canvas></div>
                 <div id="infoTable" class="row" style="flex-grow:1;overflow:auto;"></div>`;
             document.getElementById("chartsContainer").appendChild(divContainer);
@@ -570,11 +569,11 @@
         window.addEventListener('load', function() {
             menu();
             fetchData();
-            rotateScreen();
+            setChartAspectRatio();
         });
         var latestWidth = window.innerWidth;
         window.addEventListener('resize', function() {
-            rotateScreen();
+            setChartAspectRatio();
             if (latestWidth != window.innerWidth) {
                 latestWidth = window.innerWidth;
                 plotChartsFromXHR();
