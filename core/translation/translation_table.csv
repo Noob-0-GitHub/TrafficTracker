@@ -3,7 +3,7 @@ Upload,上传流量
 Download,下载流量
 Total,总流量
 Available Traffic,剩余流量
-Traffic Total(GB	),流量总计
+Traffic Total(GB),流量总计
 Traffic in last 7 days(GB),本周流量
 Traffic in last 24 hours(GB),今日流量
 Total upload(GB),总上传(GB)
@@ -24,6 +24,7 @@ Average speed of day in month,日平均速度(本月)
 Average speed of day in 7days,日平均速度(本周)
 Traffic(GB),流量(GB)
 Traffic(MB/s),流量速率(MB/s)
+Date,日期
 Traffic,流量图
 Traffic Speed,流量速率图
 Traffic in latest 7 days,本周流量图
